@@ -392,38 +392,25 @@
       background: rgba(45, 45, 58, 0.9);
     }
 
- /* Traffic layer toggle */
-.traffic-toggle {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 1000;
-  background: rgba(30, 30, 46, 0.9);
-  padding: 8px;
-  border-radius: 4px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
-  color: white;
-  font-size: 0.9rem;
-  cursor: pointer;
-}
+    .traffic-toggle.active {
+      color: #4CAF50;
+    }
 
-/* VOEG HIER JE NIEUWE CSS TOE */
-.past-appointment-marker {
-  opacity: 0.6;
-  filter: grayscale(50%);
-}
+    /* Time indicator for live traffic */
+    .live-time-indicator {
+      background: rgba(30, 30, 46, 0.9);
+      padding: 5px 10px;
+      border-radius: 4px;
+      color: #4CAF50;
+      font-size: 0.8rem;
+      margin-left: 5px;
+      display: inline-flex;
+      align-items: center;
+    }
 
-/* Time indicator for live traffic */
-.live-time-indicator {
-  background: rgba(30, 30, 46, 0.9);
-  padding: 5px 10px;
-  border-radius: 4px;
-  color: #4CAF50;
-  font-size: 0.8rem;
-  margin-left: 5px;
-  display: inline-flex;
-  align-items: center;
-}
+    .live-time-indicator i {
+      margin-right: 5px;
+    }
   </style>
 </head>
 <body>
@@ -504,16 +491,11 @@
     }
 
     // Functie om te checken of een afspraak in het verleden is
-   function isAfspraakInPast(afspraak) {
-  const now = new Date();
-  try {
-    const afspraakDate = parseDatumEnTijd(afspraak.datum, afspraak.tijd);
-    return afspraakDate < now;
-  } catch (e) {
-    console.error('Fout bij parsen datum/tijd:', e);
-    return false; // Bij twijfel, toon de afspraak maar
-  }
-}
+    function isAfspraakInPast(afspraak) {
+      const now = new Date();
+      const afspraakDate = parseDatumEnTijd(afspraak.datum, afspraak.tijd);
+      return afspraakDate < now;
+    }
 
     // Functie om datum en tijd te parsen
     function parseDatumEnTijd(datumStr, tijdStr) {
@@ -661,7 +643,7 @@
           const lon = parseFloat(cols[8]);
 
           // Wees strenger op geldige data
-          if (!datum || !medewerker || !adres || !status || !tijd || isNaN(lat) || isNaN(lon)) {
+          if (!adres || !datum || !medewerker || !tijd || isNaN(lat) || isNaN(lon)) {
               console.warn(`Rij overgeslagen door ongeldige of ontbrekende data: ${row}`);
               continue;
           }
@@ -735,45 +717,39 @@
     }
 
     function buildFilters() {
-  const datumSelect = document.getElementById("datumSelect");
-  const operatorSelect = document.getElementById("operatorSelect");
+      const datumSelect = document.getElementById("datumSelect");
+      const operatorSelect = document.getElementById("operatorSelect");
 
-  // Sorteer datums correct door eerst naar Date objecten te converteren
-  const uniekeDatums = [...new Set(afsprakenData.map((a) => a.datum))]
-    .map(d => {
-      const [dag, maand, jaar] = d.split("-").map(Number);
-      return { string: d, date: new Date(jaar, maand - 1, dag) };
-    })
-    .sort((a, b) => a.date - b.date)
-    .map(d => d.string);
+      const uniekeDatums = [...new Set(afsprakenData.map((a) => a.datum))]
+        .sort((a, b) => parseDatum(a) - parseDatum(b));
 
-  datumSelect.innerHTML = '<option value="">-- Alles --</option>'; // Reset options
-  uniekeDatums.forEach((d) => {
-    const opt = document.createElement("option");
-    opt.value = d;
-    opt.textContent = d;
-    datumSelect.appendChild(opt);
-  });
+      datumSelect.innerHTML = '<option value="">-- Alles --</option>'; // Reset options
+      uniekeDatums.forEach((d) => {
+        const opt = document.createElement("option");
+        opt.value = d;
+        opt.textContent = d;
+        datumSelect.appendChild(opt);
+      });
 
-  const allOps = afsprakenData.flatMap((a) => a.operators);
-  const uniekeOperators = [...new Set(allOps)].sort();
+      const allOps = afsprakenData.flatMap((a) => a.operators);
+      const uniekeOperators = [...new Set(allOps)].sort();
 
-  operatorSelect.innerHTML = '<option value="">-- Iedereen --</option>'; // Reset options
-  uniekeOperators.forEach((o) => {
-    const opt = document.createElement("option");
-    opt.value = o;
-    opt.textContent = o;
-    operatorSelect.appendChild(opt);
-  });
+      operatorSelect.innerHTML = '<option value="">-- Iedereen --</option>'; // Reset options
+      uniekeOperators.forEach((o) => {
+        const opt = document.createElement("option");
+        opt.value = o;
+        opt.textContent = o;
+        operatorSelect.appendChild(opt);
+      });
 
-  const updateFunction = debounce(() => {
-    updateMarkers();
-    updateCounter();
-  }, 200);
+      const updateFunction = debounce(() => {
+        updateMarkers();
+        updateCounter();
+      }, 200);
 
-  datumSelect.addEventListener("change", updateFunction);
-  operatorSelect.addEventListener("change", updateFunction);
-}
+      datumSelect.addEventListener("change", updateFunction);
+      operatorSelect.addEventListener("change", updateFunction);
+    }
 
     function buildLegend() {
       const legend = document.getElementById("legend");
@@ -865,74 +841,111 @@
         };
     }
 
-  function updateMarkers() {
-  // Bewaar geselecteerde markers data voordat we ze verwijderen
-  const selectedLatLons = selectedMarkers.map(marker => ({
-    lat: marker.getPosition().lat(),
-    lng: marker.getPosition().lng()
-  }));
+    function updateMarkers() {
+      // Bewaar geselecteerde markers data voordat we ze verwijderen
+      const selectedLatLons = selectedMarkers.map(marker => ({
+        lat: marker.getPosition().lat(),
+        lng: marker.getPosition().lng()
+      }));
 
-  // Verwijder alle bestaande markers
-  allMarkers.forEach(marker => marker.setMap(null));
-  allMarkers = [];
-  selectedMarkers = []; // Reset selected markers
+      // Verwijder alle bestaande markers
+      allMarkers.forEach(marker => marker.setMap(null));
+      allMarkers = [];
+      selectedMarkers = []; // Reset selected markers
 
-  // Clear previous search results (temporary markers)
-  searchResults.forEach(marker => marker.setMap(null));
-  searchResults = [];
+      // Clear previous search results (temporary markers)
+      searchResults.forEach(marker => marker.setMap(null));
+      searchResults = [];
 
-  const selectedDatum = document.getElementById("datumSelect").value;
-  const selectedOperator = document.getElementById("operatorSelect").value;
-  const showPast = document.getElementById("showPastAppointments").checked;
+      const selectedDatum = document.getElementById("datumSelect").value;
+      const selectedOperator = document.getElementById("operatorSelect").value;
+      const showPast = document.getElementById("showPastAppointments").checked;
 
-  const filteredData = afsprakenData.filter((a) => {
-    const datumMatch = !selectedDatum || a.datum === selectedDatum;
-    const operatorMatch = !selectedOperator || a.operators.includes(selectedOperator);
-    const legendMatch = !activeLegendFilter || a.operators.includes(activeLegendFilter);
-    
-    // Pas de past check alleen toe als showPast false is
-    if (!showPast) {
-      return !isAfspraakInPast(a) && datumMatch && operatorMatch && legendMatch;
+      const filteredData = afsprakenData.filter((a) => {
+        const datumMatch = !selectedDatum || a.datum === selectedDatum;
+        const operatorMatch = !selectedOperator || a.operators.includes(selectedOperator);
+        const pastMatch = showPast || !isAfspraakInPast(a);
+        const legendMatch = !activeLegendFilter || a.operators.includes(activeLegendFilter);
+        return datumMatch && operatorMatch && pastMatch && legendMatch;
+      });
+
+      if (filteredData.length === 0) {
+        showError('Geen afspraken gevonden met de huidige filters.');
+        return;
+      }
+
+      filteredData.forEach((afspraak) => {
+        const primaryOperator = afspraak.operators[0];
+        const emoji = operatorEmoji[primaryOperator] || "📍";
+        const isPast = isAfspraakInPast(afspraak);
+
+        const isCurrentlySelected = selectedLatLons.some(pos =>
+            Math.abs(pos.lat - afspraak.lat) < 0.000001 &&
+            Math.abs(pos.lng - afspraak.lon) < 0.000001
+        );
+
+        const marker = new google.maps.Marker({
+            position: { lat: afspraak.lat, lng: afspraak.lon },
+            map: map,
+            icon: getMarkerIcon(emoji, isCurrentlySelected, isPast),
+            title: afspraak.adres, // Voor toegankelijkheid en hover-tekst
+        });
+
+        const infoWindowContent = `
+            <div style="padding: 10px; min-width: 200px;">
+              <h3 style="margin: 0 0 10px 0; color: #FFD700;">
+                <i class="fas fa-calendar-day"></i> ${afspraak.datum}
+              </h3>
+              <p style="margin: 5px 0;">
+                <i class="fas fa-clock"></i> <strong>Tijd:</strong> ${afspraak.tijd}
+              </p>
+              <p style="margin: 5px 0;">
+                <i class="fas fa-map-marker-alt"></i> <strong>Adres:</strong> ${afspraak.adres}
+              </p>
+              <p style="margin: 5px 0;">
+                <i class="fas fa-user"></i> <strong>Operator(s):</strong> ${afspraak.operators.join(', ')}
+              </p>
+              <p style="margin: 5px 0;">
+                <i class="fas fa-info-circle"></i> <strong>Status:</strong> ${afspraak.status}
+              </p>
+              ${isPast ? '<p style="margin: 5px 0; color: #ff9800;"><i class="fas fa-history"></i> <strong>Verleden afspraak</strong></p>' : ''}
+              <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #444;">
+                <small style="color: #ccc;">
+                  <i class="fas fa-mouse-pointer"></i> Klik op de marker om toe te voegen aan selectie
+                </small>
+              </div>
+            </div>
+        `;
+        const infoWindow = new google.maps.InfoWindow({
+            content: infoWindowContent
+        });
+
+        marker.addListener('click', () => {
+            infoWindow.open(map, marker);
+            toggleMarkerSelection(marker);
+        });
+
+        marker.afspraakData = afspraak;
+        allMarkers.push(marker);
+
+        if (isCurrentlySelected) {
+            selectedMarkers.push(marker);
+            selectedAfspraken.push(afspraak);
+        }
+      });
+
+      // Auto-fit naar alle markers
+      if (allMarkers.length > 0) {
+        const bounds = new google.maps.LatLngBounds();
+        allMarkers.forEach(marker => bounds.extend(marker.getPosition()));
+        map.fitBounds(bounds);
+      }
+
+      // Update reisinfo als er geselecteerde markers waren
+      if (selectedAfspraken.length > 0) {
+        updateTravelInfo();
+      }
     }
-    return datumMatch && operatorMatch && legendMatch;
-  });
-
-  if (filteredData.length === 0) {
-    showError('Geen afspraken gevonden met de huidige filters.');
-    return;
-  }
-
-  // Rest van de functie blijft hetzelfde...
-  filteredData.forEach((afspraak) => {
-    const primaryOperator = afspraak.operators[0];
-    const emoji = operatorEmoji[primaryOperator] || "📍";
-    const isPast = isAfspraakInPast(afspraak);
-
-    const isCurrentlySelected = selectedLatLons.some(pos =>
-        Math.abs(pos.lat - afspraak.lat) < 0.000001 &&
-        Math.abs(pos.lng - afspraak.lon) < 0.000001
-    );
-
-const marker = new google.maps.Marker({
-    position: { lat: afspraak.lat, lng: afspraak.lon },
-    map: map,
-    icon: getMarkerIcon(emoji, isCurrentlySelected, isPast),
-    title: afspraak.adres,
-    // Voeg deze regel toe:
-    className: isPast ? 'past-appointment-marker' : ''
-});
-  // Auto-fit naar alle markers
-  if (allMarkers.length > 0) {
-    const bounds = new google.maps.LatLngBounds();
-    allMarkers.forEach(marker => bounds.extend(marker.getPosition()));
-    map.fitBounds(bounds);
-  }
-
-  // Update reisinfo als er geselecteerde markers waren
-  if (selectedAfspraken.length > 0) {
-    updateTravelInfo();
-  }
-}
 
     function toggleMarkerSelection(marker) {
       const index = selectedMarkers.indexOf(marker);
