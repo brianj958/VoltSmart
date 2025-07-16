@@ -643,64 +643,58 @@
       }, 5000);
     }
 
-    async function loadAfspraken() {
-      try {
-        const res = await fetch(sheetURL);
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
+async function loadAfspraken() {
+  try {
+    const res = await fetch(sheetURL);
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
 
-        const csvText = await res.text();
-        const rows = csvText.split("\n").slice(1);
-        afsprakenData = [];
+    const csvText = await res.text();
+    const rows = csvText.split("\n").slice(1); // sla header over
+    afsprakenData = [];
 
-        for (const row of rows) {
-          if (!row.trim()) continue;
+    for (const row of rows) {
+      if (!row.trim()) continue;
 
-          // Verbeterde CSV parsing die omgaat met komma's in adresvelden
-          const cols = row.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(col => col.trim().replace(/^"(.*)"$/, '$1'));
-          
-          if (cols.length < 7) {
-            console.warn(`Rij overgeslagen door onvoldoende kolommen: ${row}`);
-            continue;
-          }
+      const cols = row.split(","); // CSV zonder quote-parsing
 
-          const datum = cols[0];
-          const medewerker = cols[1];
-          const adres = cols[2];
-          const status = cols[3] || "Gepland";
-          const tijd = cols[4];
-          const lat = parseFloat(cols[5]);
-          const lon = parseFloat(cols[6]);
+      const datum = cols[0]?.trim();
+      const medewerker = cols[1]?.trim();
+      const adres = cols[2]?.trim();
+      const status = cols[3]?.trim() || "Gepland";
+      const tijd = cols[4]?.trim();
+      const lat = parseFloat(cols[7]);
+      const lon = parseFloat(cols[8]);
 
-          if (!datum || !medewerker || !adres || !status || !tijd || isNaN(lat) || isNaN(lon)) {
-              console.warn(`Rij overgeslagen door ongeldige of ontbrekende data: ${row}`);
-              continue;
-          }
-
-          const operators = medewerker.split(/[;,]/).map((o) => o.trim());
-          afsprakenData.push({ 
-            datum, 
-            medewerker, 
-            adres, 
-            status, 
-            tijd, 
-            lat, 
-            lon,
-            rawData: row // Bewaar de originele data voor debuggen
-          });
-        }
-
-        if (afsprakenData.length === 0) {
-          showError('Geen afspraken gevonden in de data. Controleer de Google Spreadsheet URL en inhoud.');
-        } else {
-          console.log(`Succesvol geladen: ${afsprakenData.length} afspraken`);
-        }
-      } catch (error) {
-        console.error('Fout bij laden van afspraken:', error);
-        showError('Kon afspraken niet laden. Probeer later opnieuw of controleer de spreadsheet URL.');
+      const rowValid = datum && medewerker && adres && tijd && !isNaN(lat) && !isNaN(lon);
+      if (!rowValid) {
+        console.warn("❌ Ongeldige rij overgeslagen:", {
+          datum, medewerker, adres, tijd, lat, lon, row
+        });
+        continue;
       }
+
+      const operators = medewerker.split(/[;,]/).map((o) => o.trim());
+
+      afsprakenData.push({
+        datum,
+        tijd,
+        operators,
+        adres,
+        status,
+        lat,
+        lon,
+        rawData: row
+      });
     }
+
+    if (afsprakenData.length === 0) {
+      showError("⚠️ Geen geldige afspraken gevonden. Controleer je Google Sheet structuur.");
+    }
+  } catch (error) {
+    console.error("Fout bij laden van afspraken:", error);
+    showError("Fout bij laden van afspraken. Controleer je spreadsheet URL of API-verbinding.");
+  }
+}
 
     function getTodayString() {
       const today = new Date();
