@@ -673,7 +673,7 @@
           const lat = parseFloat(cols[5]);
           const lon = parseFloat(cols[6]);
 
-          if (!datum || !medewerker || !adres || !tijd || isNaN(lat) || isNaN(lon)) {
+          if (!datum || !medewerker || !adres || !status || !tijd || isNaN(lat) || isNaN(lon)) {
               console.warn(`Rij overgeslagen door ongeldige of ontbrekende data: ${row}`);
               continue;
           }
