@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -734,20 +735,21 @@
       }, stepTime);
     }
 
-    function buildFilters() {
+    
+function buildFilters() {
   const datumSelect = document.getElementById("datumSelect");
   const operatorSelect = document.getElementById("operatorSelect");
 
-  // Sorteer datums correct door eerst naar Date objecten te converteren
-  const uniekeDatums = [...new Set(afsprakenData.map((a) => a.datum))]
-    .map(d => {
-      const [dag, maand, jaar] = d.split("-").map(Number);
-      return { string: d, date: new Date(jaar, maand - 1, dag) };
-    })
-    .sort((a, b) => a.date - b.date)
-    .map(d => d.string);
+  const uniekeDatums = [...new Set(afsprakenData.map((a) => a.datum))];
 
-  datumSelect.innerHTML = '<option value="">-- Alles --</option>'; // Reset options
+  // Sorteer op datum oplopend (dd-mm-jjjj → datumobject)
+  uniekeDatums.sort((a, b) => {
+    const [dagA, maandA, jaarA] = a.split("-").map(Number);
+    const [dagB, maandB, jaarB] = b.split("-").map(Number);
+    return new Date(jaarA, maandA - 1, dagA) - new Date(jaarB, maandB - 1, dagB);
+  });
+
+  datumSelect.innerHTML = '<option value="">-- Alles --</option>';
   uniekeDatums.forEach((d) => {
     const opt = document.createElement("option");
     opt.value = d;
@@ -758,7 +760,7 @@
   const allOps = afsprakenData.flatMap((a) => a.operators);
   const uniekeOperators = [...new Set(allOps)].sort();
 
-  operatorSelect.innerHTML = '<option value="">-- Iedereen --</option>'; // Reset options
+  operatorSelect.innerHTML = '<option value="">-- Iedereen --</option>';
   uniekeOperators.forEach((o) => {
     const opt = document.createElement("option");
     opt.value = o;
@@ -889,12 +891,8 @@
     const datumMatch = !selectedDatum || a.datum === selectedDatum;
     const operatorMatch = !selectedOperator || a.operators.includes(selectedOperator);
     const legendMatch = !activeLegendFilter || a.operators.includes(activeLegendFilter);
-    
-    // Pas de past check alleen toe als showPast false is
-    if (!showPast) {
-      return !isAfspraakInPast(a) && datumMatch && operatorMatch && legendMatch;
-    }
-    return datumMatch && operatorMatch && legendMatch;
+    const isPast = isAfspraakInPast(a);
+    return datumMatch && operatorMatch && legendMatch && (showPast || !isPast);
   });
 
   if (filteredData.length === 0) {
@@ -921,6 +919,22 @@ const marker = new google.maps.Marker({
     // Voeg deze regel toe:
     className: isPast ? 'past-appointment-marker' : ''
 });
+  allMarkers.push(marker);
+  marker.afspraakData = afspraak;
+
+  
+  const infoWindow = new google.maps.InfoWindow({
+    content: `<div style="color: #000;"><strong>${afspraak.operators.join(", ")}</strong><br>${afspraak.adres}<br>${afspraak.datum} ${afspraak.tijd}</div>`
+  });
+
+  marker.addListener("click", () => {
+    toggleMarkerSelection(marker);
+    infoWindow.open(map, marker);
+  });
+
+});
+} // <-- sluit updateMarkers functie af
+
   // Auto-fit naar alle markers
   if (allMarkers.length > 0) {
     const bounds = new google.maps.LatLngBounds();
