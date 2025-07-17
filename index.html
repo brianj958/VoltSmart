@@ -453,9 +453,12 @@
   </div>
   <div id="legend"></div>
 
-  <script>
-    const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv";
+ <script>
+    const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFG r_LmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv"; // Dit is je huidige publieke CSV-URL, deze blijft hetzelfde
     const googleAPIKey = "AIzaSyDTvDRPKBT7KDONeDgekEXlN1_CMZUtX4U";
+
+    // VERVANG DIT MET DE URL VAN JE GOOGLE APPS SCRIPT WEB-APP!
+    const googleAppsScriptURL = "https://script.google.com/a/macros/voltsmart.nl/s/AKfycbyJ6yzz6q3_090kLfTPTPMIxuZ1BZPBiXH20DIXmcwWE5tcVFR7ceg4zM4JwMkVBjzOYA/exec"; 
 
     const operatorEmoji = {
       Roelof: "👨‍🌾",
@@ -518,9 +521,14 @@
         throw new Error('Ongeldig datumformaat');
       }
       
+      // Controleer voor 2-cijferig jaar en converteer naar 4-cijferig
+      let jaar = parseInt(dateParts[2]);
+      if (jaar < 100) { // Als het bijvoorbeeld '24' is, maak er '2024' van
+          jaar += 2000; // Simpele aanname voor 21e eeuw
+      }
+
       const dag = parseInt(dateParts[0]);
       const maand = parseInt(dateParts[1]) - 1; // Maanden zijn 0-based in JavaScript
-      const jaar = parseInt(dateParts[2]);
       
       // Tijd parsing
       let uren, minuten = 0;
@@ -578,8 +586,14 @@
             await loadAfspraken();
             buildFilters();
             buildLegend();
-            updateMarkers();
-            updateCounter();
+            
+            // Punt 2: Standaard openen op afspraken van vandaag
+            const todayString = getTodayString();
+            document.getElementById("datumSelect").value = todayString;
+            
+            updateMarkers(); // Roep aan om markers te tonen met de initiële filter (vandaag)
+            updateCounter(); // Roep aan om counters te updaten na het filteren
+            
 
             document.getElementById("clear-selection").addEventListener("click", clearSelection);
 
@@ -608,12 +622,10 @@
       if (liveTrafficEnabled) {
         trafficLayer.setMap(null);
         liveTrafficEnabled = false;
-        document.querySelector('.traffic-toggle').style.color = 'white';
         document.querySelector('.traffic-toggle').classList.remove('active');
       } else {
         trafficLayer.setMap(map);
         liveTrafficEnabled = true;
-        document.querySelector('.traffic-toggle').style.color = '#4CAF50';
         document.querySelector('.traffic-toggle').classList.add('active');
 
         if (map.getZoom() < 10) {
@@ -683,7 +695,7 @@ async function loadAfspraken() {
         status,
         lat,
         lon,
-        rawData: row
+        rawData: row // Bewaar de ruwe rij voor potentiële back-end updates
       });
     }
 
@@ -704,23 +716,28 @@ async function loadAfspraken() {
       return `${day}-${month}-${year}`;
     }
 
+    // Punt 1: Aanpassing van de counter-logica voor "Vandaag"
     function updateCounter() {
       const selectedDatum = document.getElementById("datumSelect").value;
       const selectedOperator = document.getElementById("operatorSelect").value;
       const showPast = document.getElementById("showPastAppointments").checked;
 
-      const filteredData = afsprakenData.filter((a) => {
+      const filteredForDisplay = afsprakenData.filter((a) => {
         const datumMatch = !selectedDatum || a.datum === selectedDatum;
         const operatorMatch = !selectedOperator || a.operators.includes(selectedOperator);
         const pastMatch = showPast || !isAfspraakInPast(a);
         return datumMatch && operatorMatch && pastMatch;
       });
 
+      // 'Vandaag' telling altijd baseren op de werkelijke huidige dag, ongeacht het datumfilter van de kaart
       const todayString = getTodayString();
-      const todayCount = filteredData.filter(a => a.datum === todayString).length;
-      const totalCount = filteredData.length;
+      const actualTodayCount = afsprakenData.filter(a => 
+        a.datum === todayString && (showPast || !isAfspraakInPast(a))
+      ).length;
 
-      animateCounter("count-today", todayCount);
+      const totalCount = filteredForDisplay.length; // Totaal aantal afspraken in de huidige gefilterde weergave
+
+      animateCounter("count-today", actualTodayCount);
       animateCounter("count-total", totalCount);
     }
 
@@ -908,11 +925,12 @@ async function loadAfspraken() {
       });
 
       if (filteredData.length === 0) {
-        showError('Geen afspraken gevonden met de huidige filters.');
+        // Alleen tonen als er geen resultaten zijn na filtering, niet bij initiële leegte
+        // showError('Geen afspraken gevonden met de huidige filters.');
       }
 
       filteredData.forEach((afspraak) => {
-        const primaryOperator = afspraak.operators[0];
+        const primaryOperator = afspraak.operators[0]; // Gebruik de eerste operator voor de icon
         const emoji = operatorEmoji[primaryOperator] || "📍";
         const isPast = isAfspraakInPast(afspraak);
 
@@ -926,6 +944,7 @@ async function loadAfspraken() {
             map: map,
             icon: getMarkerIcon(emoji, isCurrentlySelected, isPast),
             title: afspraak.adres,
+            draggable: true // Punt 3: Maak markers draggable
         });
         allMarkers.push(marker);
         marker.afspraakData = afspraak;
@@ -947,6 +966,11 @@ async function loadAfspraken() {
         marker.addListener("click", () => {
           toggleMarkerSelection(marker);
           infoWindow.open(map, marker);
+        });
+        
+        // Punt 3: Voeg dragend listener toe
+        marker.addListener('dragend', (event) => {
+            handleMarkerDragEnd(marker, event.latLng);
         });
       });
 
@@ -1229,6 +1253,136 @@ async function loadAfspraken() {
               showLoading(false);
           }
       }
+    }
+
+    // Punt 3: Functie voor het afhandelen van het slepen van een marker
+    async function handleMarkerDragEnd(draggedMarker, newPosition) {
+        const radiusThreshold = 50; // Straal in meters om een 'drop' op een andere marker te detecteren
+
+        let targetMarker = null;
+        let minDistance = Infinity;
+
+        for (const marker of allMarkers) {
+            if (marker === draggedMarker) continue; // Niet vergelijken met zichzelf
+
+            const distance = google.maps.geometry.spherical.computeDistanceBetween(
+                newPosition,
+                marker.getPosition()
+            );
+
+            if (distance < minDistance && distance < radiusThreshold) {
+                minDistance = distance;
+                targetMarker = marker;
+            }
+        }
+
+        if (targetMarker) {
+            console.log(`Marker gesleept naar de buurt van ${targetMarker.afspraakData.adres}`);
+            // Voer de wissellogica uit
+            const afspraakA = draggedMarker.afspraakData;
+            const afspraakB = targetMarker.afspraakData;
+
+            // Haal de huidige operators op (maak kopieën om direct te kunnen wijzigen)
+            let newOperatorsA = [...afspraakA.operators];
+            let newOperatorsB = [...afspraakB.operators];
+
+            // Wissel de eerste operator van de arrays
+            const tempOperatorA_primary = newOperatorsA.length > 0 ? newOperatorsA[0] : '';
+            const tempOperatorB_primary = newOperatorsB.length > 0 ? newOperatorsB[0] : '';
+
+            if (newOperatorsA.length > 0) newOperatorsA[0] = tempOperatorB_primary;
+            else if (tempOperatorB_primary) newOperatorsA.push(tempOperatorB_primary); // Voeg toe als A geen operators had
+
+            if (newOperatorsB.length > 0) newOperatorsB[0] = tempOperatorA_primary;
+            else if (tempOperatorA_primary) newOperatorsB.push(tempOperatorA_primary); // Voeg toe als B geen operators had
+            
+            // Verwijder lege strings als operators
+            newOperatorsA = newOperatorsA.filter(op => op !== '');
+            newOperatorsB = newOperatorsB.filter(op => op !== '');
+
+
+            // Update de afspraakData objecten in de browser
+            afspraakA.operators = newOperatorsA;
+            afspraakB.operators = newOperatorsB;
+
+            // Update marker iconen om de nieuwe operators te reflecteren
+            draggedMarker.setIcon(getMarkerIcon(operatorEmoji[afspraakA.operators[0]] || "📍", selectedMarkers.includes(draggedMarker), isAfspraakInPast(afspraakA)));
+            targetMarker.setIcon(getMarkerIcon(operatorEmoji[afspraakB.operators[0]] || "📍", selectedMarkers.includes(targetMarker), isAfspraakInPast(afspraakB)));
+
+            // Stuur de update naar de Google Sheet via Google Apps Script
+            await updateGoogleSheet(
+                { datum: afspraakA.datum, tijd: afspraakA.tijd, adres: afspraakA.adres, new_operator: afspraakA.operators.join(', ') },
+                { datum: afspraakB.datum, tijd: afspraakB.tijd, adres: afspraakB.adres, new_operator: afspraakB.operators.join(', ') }
+            );
+
+            // Zet de gesleepte marker terug naar zijn oorspronkelijke positie
+            // Dit is cruciaal omdat de "swap" data verandert, niet de locatie van de afspraak op de kaart.
+            draggedMarker.setPosition({ lat: afspraakA.lat, lng: afspraakA.lon });
+            
+            // Update de teller om de gewijzigde operators te reflecteren (indien relevant voor filtering)
+            updateCounter();
+
+        } else {
+            console.log("Marker gesleept, maar niet op een andere afspraak neergezet. Positie wordt hersteld.");
+            // Als niet op een andere marker neergezet, herstel de positie
+            draggedMarker.setPosition({ lat: draggedMarker.afspraakData.lat, lng: draggedMarker.afspraakData.lon });
+        }
+    }
+
+    // Punt 3: Functie om de Google Sheet bij te werken via Apps Script
+    async function updateGoogleSheet(appData1, appData2) {
+        if (!googleAppsScriptURL || googleAppsScriptURL === "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL") {
+            showError("Fout: Google Apps Script URL is niet ingesteld. Kan de sheet niet bijwerken.");
+            return;
+        }
+
+        const payload = {
+            action: "swapOperators",
+            appointments: [
+                {
+                    original_datum: appData1.datum,
+                    original_tijd: appData1.tijd,
+                    original_adres: appData1.adres,
+                    new_operator: appData1.new_operator
+                },
+                {
+                    original_datum: appData2.datum,
+                    original_tijd: appData2.tijd,
+                    original_adres: appData2.adres,
+                    new_operator: appData2.new_operator
+                }
+            ]
+        };
+
+        try {
+            showLoading(true);
+            const response = await fetch(googleAppsScriptURL, {
+                method: "POST",
+                mode: "cors", // Belangrijk voor het ontvangen van de response van Apps Script
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(payload),
+            });
+
+            const result = await response.json(); // Parsen van de JSON response van Apps Script
+
+            if (response.ok && result.status === "success") {
+                alert(`Succes! ${result.message}`);
+                // Na een succesvolle update, opnieuw laden van afspraken om zeker te zijn van de data-consistentie
+                await loadAfspraken();
+                updateMarkers();
+                updateCounter();
+            } else {
+                showError(`Fout bij sheet update: ${result.message || 'Onbekende fout van Apps Script.'}`);
+            }
+
+        } catch (error) {
+            console.error("Fout bij versturen update naar Google Apps Script:", error);
+            showError("Fout bij versturen van de wijziging naar de Google Sheet. Controleer je Apps Script configuratie.");
+        } finally {
+            showLoading(false);
+        }
     }
   </script>
 </body>
