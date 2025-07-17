@@ -11,6 +11,9 @@
       script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyDTvDRPKBT7KDONeDgekEXlN1_CMZUtX4U&libraries=places,geometry&callback=initMap&loading=async';
       script.async = true;
       script.defer = true;
+      script.onerror = function() {
+        showError('Kon Google Maps API niet laden. Controleer je internetverbinding.');
+      };
       document.head.appendChild(script);
     }
     window.onload = loadGoogleMaps;
@@ -413,6 +416,24 @@
       display: inline-flex;
       align-items: center;
     }
+
+    /* Dragging feedback styles */
+    .dragging-marker {
+      z-index: 1000 !important;
+      opacity: 0.8 !important;
+      transform: scale(1.2);
+      transition: transform 0.2s, opacity 0.2s;
+    }
+
+    .drop-target-marker {
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
   </style>
 </head>
 <body>
@@ -455,7 +476,7 @@
 
 <script>
     // ZORG DAT DEZE URL CORRECT IS EN GEEN SPATIES BEVAT!
-    const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFGr_LmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv"; 
+    const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv"; 
     const googleAPIKey = "AIzaSyDTvDRPKBT7KDONeDgekEXlN1_CMZUtX4U";
 
     // VERVANG DIT MET DE NIEUWE URL VAN JE GOOGLE APPS SCRIPT WEB-APP!
@@ -484,6 +505,7 @@
     let searchResults = [];
     let activeLegendFilter = null;
     let geocoder;
+    let currentlyDragging = null;
 
     function debounce(func, wait) {
       let timeout;
@@ -509,39 +531,52 @@
     }
 
     function parseDatumEnTijd(datumStr, tijdStr) {
-      // Aangepaste datum parser voor zowel dd-mm-jjjj als d/m/jjjj formaten
+      // Verbeterde datum parser voor verschillende formaten
+      if (!datumStr || !tijdStr) {
+        throw new Error('Datum of tijd ontbreekt');
+      }
+      
+      // Probeer verschillende datumformaten
       let dateParts;
       if (datumStr.includes('/')) {
         dateParts = datumStr.split('/');
-      } else {
+      } else if (datumStr.includes('-')) {
         dateParts = datumStr.split('-');
+      } else {
+        throw new Error('Ongeldig datumformaat');
       }
       
-      // Zorg dat we altijd 3 delen hebben (dag, maand, jaar)
       if (dateParts.length !== 3) {
         throw new Error('Ongeldig datumformaat');
       }
       
-      // Controleer voor 2-cijferig jaar en converteer naar 4-cijferig
+      // Parse jaar (ondersteunt 2-cijferige jaren)
       let jaar = parseInt(dateParts[2]);
-      if (jaar < 100) { // Als het bijvoorbeeld '24' is, maak er '2024' van
-          jaar += 2000; // Simpele aanname voor 21e eeuw
+      if (jaar < 100) {
+        jaar += 2000; // Aanname voor 21e eeuw
       }
 
       const dag = parseInt(dateParts[0]);
-      const maand = parseInt(dateParts[1]) - 1; // Maanden zijn 0-based in JavaScript
+      const maand = parseInt(dateParts[1]) - 1; // Maanden zijn 0-based
       
       // Tijd parsing
-      let uren, minuten = 0;
+      let uren = 0, minuten = 0;
       if (tijdStr.includes(':')) {
         const tijdParts = tijdStr.split(':');
-        uren = parseInt(tijdParts[0]);
+        uren = parseInt(tijdParts[0]) || 0;
         minuten = parseInt(tijdParts[1]) || 0;
       } else {
         uren = parseInt(tijdStr) || 0;
       }
       
-      return new Date(jaar, maand, dag, uren, minuten);
+      const parsedDate = new Date(jaar, maand, dag, uren, minuten);
+      
+      // Validatie
+      if (isNaN(parsedDate.getTime())) {
+        throw new Error('Ongeldige datum/tijd combinatie');
+      }
+      
+      return parsedDate;
     }
 
     window.initMap = async function () {
@@ -588,22 +623,18 @@
             buildFilters();
             buildLegend();
             
-            // Fix voor punt 2: Standaard openen op afspraken van vandaag
+            // Standaard openen op afspraken van vandaag
             const todayString = getTodayString();
             const datumSelect = document.getElementById("datumSelect");
-            // Controleer of de optie voor vandaag bestaat in de dropdown
             const todayOptionExists = Array.from(datumSelect.options).some(option => option.value === todayString);
             if (todayOptionExists) {
                 datumSelect.value = todayString;
             } else {
-                // Als vandaag geen afspraken heeft, selecteer dan "Alles" of de eerste optie.
-                // In dit geval blijft het "-- Alles --" als dat de standaard is.
                 datumSelect.value = ""; // Default naar "-- Alles --"
             }
             
-            updateMarkers(); // Roep aan om markers te tonen met de initiële filter (vandaag of alles)
-            updateCounter(); // Roep aan om counters te updaten na het filteren
-            
+            updateMarkers();
+            updateCounter();
 
             document.getElementById("clear-selection").addEventListener("click", clearSelection);
 
@@ -665,87 +696,104 @@
       }, 5000);
     }
 
-async function loadAfspraken() {
-  try {
-    const res = await fetch(sheetURL);
-    if (!res.ok) throw new Error(`HTTP error! status: ${res.status} voor URL: ${sheetURL}`);
-
-    const csvText = await res.text();
-    const rows = csvText.split("\n").slice(1); // sla header over
-    afsprakenData = [];
-
-    for (const row of rows) {
-      if (!row.trim()) continue;
-
-      const cols = row.split(","); // CSV zonder quote-parsing. Voor complexere CSV, gebruik een parser bibliotheek
-
-      const datum = cols[0]?.trim();
-      const medewerker = cols[1]?.trim();
-      const adres = cols[2]?.trim();
-      const status = cols[3]?.trim() || "Gepland";
-      const tijd = cols[4]?.trim();
-      const lat = parseFloat(cols[7]);
-      const lon = parseFloat(cols[8]);
-
-      // Controleren of de datum correct geparsed kan worden
-      let parsedDate;
+    async function loadAfspraken() {
+      showLoading(true);
       try {
-          parsedDate = parseDatumEnTijd(datum, tijd);
-      } catch (e) {
-          console.warn("❌ Fout bij parsen datum/tijd voor rij (datum, tijd):", datum, tijd, "Overgeslagen.", e);
-          continue; // Sla deze rij over als datum/tijd niet te parsen is
+        const res = await fetch(sheetURL);
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status} voor URL: ${sheetURL}`);
+
+        const csvText = await res.text();
+        const rows = csvText.split("\n").slice(1); // sla header over
+        afsprakenData = [];
+        let errorCount = 0;
+
+        for (const row of rows) {
+          if (!row.trim()) continue;
+
+          try {
+            // Basis CSV parsing - voor complexere CSV zou je een library moeten gebruiken
+            const cols = row.split(',').map(col => col.trim());
+            
+            // Controleer of er voldoende kolommen zijn
+            if (cols.length < 9) {
+              console.warn("Rij heeft te weinig kolommen:", row);
+              errorCount++;
+              continue;
+            }
+
+            const datum = cols[0];
+            const medewerker = cols[1];
+            const adres = cols[2];
+            const status = cols[3] || "Gepland";
+            const tijd = cols[4];
+            const lat = parseFloat(cols[7]);
+            const lon = parseFloat(cols[8]);
+
+            // Validatie
+            if (!datum || !medewerker || !adres || !tijd || isNaN(lat) || isNaN(lon)) {
+              console.warn("Ontbrekende of ongeldige data in rij:", row);
+              errorCount++;
+              continue;
+            }
+
+            // Probeer datum te parsen voor validatie
+            try {
+              parseDatumEnTijd(datum, tijd);
+            } catch (e) {
+              console.warn("Ongeldige datum/tijd in rij:", datum, tijd, "Fout:", e.message);
+              errorCount++;
+              continue;
+            }
+
+            const operators = medewerker.split(/[;,]/).map((o) => o.trim()).filter(o => o);
+
+            afsprakenData.push({
+              datum,
+              tijd,
+              operators,
+              adres,
+              status,
+              lat,
+              lon,
+              originalDatum: datum, 
+              originalTijd: tijd,
+              originalAdres: adres
+            });
+          } catch (e) {
+            console.error("Fout bij verwerken rij:", row, "Fout:", e);
+            errorCount++;
+          }
+        }
+
+        if (errorCount > 0) {
+          showError(`⚠️ ${errorCount} rijen konden niet worden verwerkt. Controleer de gegevens.`);
+        }
+
+        if (afsprakenData.length === 0) {
+          showError("⚠️ Geen geldige afspraken gevonden. Controleer je Google Sheet structuur.");
+        }
+      } catch (error) {
+        console.error("Fout bij laden van afspraken:", error);
+        showError("Fout bij laden van afspraken. Controleer je spreadsheet URL of API-verbinding.");
+      } finally {
+        showLoading(false);
       }
-
-      const rowValid = datum && medewerker && adres && tijd && !isNaN(lat) && !isNaN(lon);
-      if (!rowValid) {
-        console.warn("❌ Ongeldige rij overgeslagen (ontbrekende data of ongeldige coördinaten):", {
-          datum, medewerker, adres, tijd, lat, lon, row
-        });
-        continue;
-      }
-
-      const operators = medewerker.split(/[;,]/).map((o) => o.trim()).filter(o => o); // Filter lege strings
-
-      afsprakenData.push({
-        datum,
-        tijd,
-        operators,
-        adres,
-        status,
-        lat,
-        lon,
-        // Belangrijk voor het vinden van de juiste rij in de Google Sheet
-        originalDatum: datum, 
-        originalTijd: tijd,
-        originalAdres: adres
-      });
     }
-
-    if (afsprakenData.length === 0) {
-      showError("⚠️ Geen geldige afspraken gevonden. Controleer je Google Sheet structuur.");
-    }
-  } catch (error) {
-    console.error("Fout bij laden van afspraken:", error);
-    showError("Fout bij laden van afspraken. Controleer je spreadsheet URL of API-verbinding.");
-  }
-}
 
     function getTodayString() {
       const today = new Date();
       const day = today.getDate().toString().padStart(2, '0');
       const month = (today.getMonth() + 1).toString().padStart(2, '0');
       const year = today.getFullYear();
-      // Gebruik hier consistentie met de input formaten, bijv. "DD-MM-YYYY"
       return `${day}-${month}-${year}`; 
     }
 
-    // Fix voor punt 1: Aanpassing van de counter-logica voor "Vandaag"
     function updateCounter() {
       const selectedDatum = document.getElementById("datumSelect").value;
       const selectedOperator = document.getElementById("operatorSelect").value;
       const showPast = document.getElementById("showPastAppointments").checked;
 
-      // Filter voor de "Totaal" teller, gebaseerd op de filters van de kaart
+      // Filter voor de "Totaal" teller
       const filteredForDisplay = afsprakenData.filter((a) => {
         const datumMatch = !selectedDatum || a.datum === selectedDatum;
         const operatorMatch = !selectedOperator || a.operators.includes(selectedOperator);
@@ -753,13 +801,13 @@ async function loadAfspraken() {
         return datumMatch && operatorMatch && pastMatch;
       });
 
-      // 'Vandaag' telling baseren op de werkelijke huidige dag, ongeacht het datumfilter van de kaart
+      // 'Vandaag' telling baseren op de werkelijke huidige dag
       const todayString = getTodayString();
       const actualTodayCount = afsprakenData.filter(a => 
         a.datum === todayString && (showPast || !isAfspraakInPast(a))
       ).length;
 
-      const totalCount = filteredForDisplay.length; // Totaal aantal afspraken in de huidige gefilterde weergave
+      const totalCount = filteredForDisplay.length;
 
       animateCounter("count-today", actualTodayCount);
       animateCounter("count-total", totalCount);
@@ -773,7 +821,7 @@ async function loadAfspraken() {
       const steps = Math.abs(targetValue - currentValue);
 
       if (steps === 0) {
-        element.textContent = targetValue; // Zorg dat de waarde direct wordt gezet als er geen animatie nodig is
+        element.textContent = targetValue;
         return;
       }
 
@@ -952,20 +1000,15 @@ async function loadAfspraken() {
       });
 
       if (filteredData.length === 0 && (selectedDatum || selectedOperator || activeLegendFilter)) {
-        // Toon alleen foutmelding als er filters actief zijn en geen resultaten
-        // zodat de kaart niet direct leeg is zonder filters.
         showError('Geen afspraken gevonden met de huidige filters.');
       } else if (filteredData.length === 0 && !selectedDatum && !selectedOperator && !activeLegendFilter) {
-          // Geen afspraken in de hele dataset, maar geen filters actief
-          // toon een algemene melding als er echt geen data is
           if (afsprakenData.length === 0) {
               showError('Geen afspraken geladen. Controleer je brongegevens.');
           }
       }
 
-
       filteredData.forEach((afspraak) => {
-        const primaryOperator = afspraak.operators[0]; // Gebruik de eerste operator voor de icon
+        const primaryOperator = afspraak.operators[0];
         const emoji = operatorEmoji[primaryOperator] || "📍";
         const isPast = isAfspraakInPast(afspraak);
 
@@ -979,7 +1022,7 @@ async function loadAfspraken() {
             map: map,
             icon: getMarkerIcon(emoji, isCurrentlySelected, isPast),
             title: afspraak.adres,
-            draggable: true // Punt 3: Maak markers draggable
+            draggable: true
         });
         allMarkers.push(marker);
         marker.afspraakData = afspraak;
@@ -1003,9 +1046,17 @@ async function loadAfspraken() {
           infoWindow.open(map, marker);
         });
         
-        // Punt 3: Voeg dragend listener toe
+        // Dragging event handlers
+        marker.addListener('dragstart', () => {
+          currentlyDragging = marker;
+          marker.set('dragging', true);
+          marker.setIcon(getMarkerIcon(emoji, true, isPast));
+          marker.setZIndex(1000);
+        });
+        
         marker.addListener('dragend', (event) => {
-            handleMarkerDragEnd(marker, event.latLng);
+          marker.set('dragging', false);
+          handleMarkerDragEnd(marker, event.latLng);
         });
       });
 
@@ -1290,16 +1341,26 @@ async function loadAfspraken() {
       }
     }
 
-    // Fix voor punt 3: Functie voor het afhandelen van het slepen van een marker
     async function handleMarkerDragEnd(draggedMarker, newPosition) {
         const radiusThreshold = 50; // Straal in meters om een 'drop' op een andere marker te detecteren
 
         let targetMarker = null;
         let minDistance = Infinity;
 
-        // Itereren over alle actieve markers om te zien of de gesleepte marker op een andere is 'gedropt'
+        // Reset alle markers naar hun normale staat
+        allMarkers.forEach(marker => {
+            if (marker !== draggedMarker) {
+                const primaryOperator = marker.afspraakData.operators[0];
+                const emoji = operatorEmoji[primaryOperator] || "📍";
+                const isPast = isAfspraakInPast(marker.afspraakData);
+                const isSelected = selectedMarkers.includes(marker);
+                marker.setIcon(getMarkerIcon(emoji, isSelected, isPast));
+            }
+        });
+
+        // Zoek de dichtstbijzijnde marker binnen de threshold
         for (const marker of allMarkers) {
-            if (marker === draggedMarker) continue; // Niet vergelijken met zichzelf
+            if (marker === draggedMarker) continue;
 
             const distance = google.maps.geometry.spherical.computeDistanceBetween(
                 newPosition,
@@ -1318,36 +1379,33 @@ async function loadAfspraken() {
             const afspraakA = draggedMarker.afspraakData;
             const afspraakB = targetMarker.afspraakData;
 
-            // Haal de huidige operators op (maak kopieën om direct te kunnen wijzigen)
+            // Haal de huidige operators op
             let newOperatorsA = [...afspraakA.operators];
             let newOperatorsB = [...afspraakB.operators];
 
             // Wissel de eerste operator van de arrays
-            // Voorkom 'undefined' als een array leeg is
             const primaryOperatorA = newOperatorsA.length > 0 ? newOperatorsA[0] : '';
             const primaryOperatorB = newOperatorsB.length > 0 ? newOperatorsB[0] : '';
 
-            // Als A een operator heeft, vervang deze, anders voeg toe (als B een operator had)
             if (newOperatorsA.length > 0) newOperatorsA[0] = primaryOperatorB;
             else if (primaryOperatorB) newOperatorsA.push(primaryOperatorB); 
 
-            // Als B een operator heeft, vervang deze, anders voeg toe (als A een operator had)
             if (newOperatorsB.length > 0) newOperatorsB[0] = primaryOperatorA;
             else if (primaryOperatorA) newOperatorsB.push(primaryOperatorA); 
             
-            // Verwijder lege strings die kunnen ontstaan als een operator wordt gewisseld met een lege string
+            // Verwijder lege strings
             newOperatorsA = newOperatorsA.filter(op => op); 
             newOperatorsB = newOperatorsB.filter(op => op);
 
-            // Update de afspraakData objecten in de browser
+            // Update de afspraakData objecten
             afspraakA.operators = newOperatorsA;
             afspraakB.operators = newOperatorsB;
 
-            // Update marker iconen om de nieuwe operators te reflecteren
+            // Update marker iconen
             draggedMarker.setIcon(getMarkerIcon(operatorEmoji[afspraakA.operators[0]] || "📍", selectedMarkers.includes(draggedMarker), isAfspraakInPast(afspraakA)));
             targetMarker.setIcon(getMarkerIcon(operatorEmoji[afspraakB.operators[0]] || "📍", selectedMarkers.includes(targetMarker), isAfspraakInPast(afspraakB)));
 
-            // Stuur de update naar de Google Sheet via Google Apps Script
+            // Stuur de update naar de Google Sheet
             await updateGoogleSheet(
                 { original_datum: afspraakA.originalDatum, original_tijd: afspraakA.originalTijd, original_adres: afspraakA.originalAdres, new_operator: afspraakA.operators.join(', ') },
                 { original_datum: afspraakB.originalDatum, original_tijd: afspraakB.originalTijd, original_adres: afspraakB.originalAdres, new_operator: afspraakB.operators.join(', ') }
@@ -1356,17 +1414,17 @@ async function loadAfspraken() {
             // Zet de gesleepte marker terug naar zijn oorspronkelijke positie
             draggedMarker.setPosition({ lat: afspraakA.lat, lng: afspraakA.lon });
             
-            // Update de teller om de gewijzigde operators te reflecteren (indien relevant voor filtering)
+            // Update de teller
             updateCounter();
 
         } else {
             console.log("Marker gesleept, maar niet op een andere afspraak neergezet. Positie wordt hersteld.");
-            // Als niet op een andere marker neergezet, herstel de positie
             draggedMarker.setPosition({ lat: draggedMarker.afspraakData.lat, lng: draggedMarker.afspraakData.lon });
         }
+        
+        currentlyDragging = null;
     }
 
-    // Fix voor punt 3: Functie om de Google Sheet bij te werken via Apps Script
     async function updateGoogleSheet(appData1, appData2) {
         if (!googleAppsScriptURL || googleAppsScriptURL === "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL") {
             showError("Fout: Google Apps Script URL is niet ingesteld. Kan de sheet niet bijwerken.");
@@ -1398,23 +1456,36 @@ async function loadAfspraken() {
             showLoading(true);
             const response = await fetch(googleAppsScriptURL, {
                 method: "POST",
-                mode: "cors", // Belangrijk voor het ontvangen van de response van Apps Script
+                mode: "cors",
                 headers: {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify(payload),
             });
 
-            const result = await response.json(); // Parsen van de JSON response van Apps Script
+            const result = await response.json();
             console.log("Antwoord van Apps Script:", result);
 
             if (response.ok && result.status === "success") {
-                alert(`Succes! ${result.message}`);
-                // Na een succesvolle update, opnieuw laden van afspraken om zeker te zijn van de data-consistentie
-                // En om de operatorlijsten te actualiseren voor toekomstige swaps.
+                // Toon een subtiele melding in plaats van een alert
+                const successDiv = document.createElement('div');
+                successDiv.className = 'error-message';
+                successDiv.style.backgroundColor = 'rgba(76, 175, 80, 0.2)';
+                successDiv.style.borderColor = '#4CAF50';
+                successDiv.style.color = '#4CAF50';
+                successDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${result.message}`;
+                document.body.appendChild(successDiv);
+
+                setTimeout(() => {
+                    if (document.body.contains(successDiv)) {
+                        document.body.removeChild(successDiv);
+                    }
+                }, 3000);
+                
+                // Herlaad de afspraken om zeker te zijn van consistentie
                 await loadAfspraken(); 
-                updateMarkers(); // Hertekent de markers met de nieuwe data
-                updateCounter(); // Herrekent de tellers
+                updateMarkers();
+                updateCounter();
             } else {
                 showError(`Fout bij sheet update: ${result.message || 'Onbekende fout van Apps Script.'}`);
                 console.error("Apps Script response status niet succesvol:", result);
