@@ -1545,8 +1545,10 @@ function parseDatumTijd(datum, tijd) {
   return new Date(jaar < 100 ? 2000 + jaar : jaar, maand - 1, dag, uur, min);
 }
 
-function checkRoutes() {
+async function checkRoutes() {
   clearLog();
+  await laadAfspraken();
+  plaatsMarkers(window.afspraken);
       if (!window.afspraken || window.afspraken.length < 2) {
         alert("Niet genoeg afspraken om te controleren.");
         return;
