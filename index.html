@@ -1609,7 +1609,12 @@ function laadAfsprakenNieuwe(sheetURL) {
     .then(res => res.text())
     .then(text => {
       const rows = text.split("\n").slice(1);
-      const afspraken = rows.map(row => {
+      const afspraken = rows.map((row, index) => {
+        const cols = row.split(',').map(col => col.trim());
+        if (cols.length < 8 || !cols[2]) {
+          console.warn(`Rij ${index + 2} overgeslagen: ontbrekende klantnaam of kolommen.`);
+          return null;
+        }
         const cols = row.split(',').map(col => col.trim());
         if (!cols[2]) return null; // klantnaam ontbreekt
         return {
@@ -1622,7 +1627,7 @@ function laadAfsprakenNieuwe(sheetURL) {
           lat: parseFloat(cols[6]),
           lon: parseFloat(cols[7])
         };
-      }).filter(a => a && !isNaN(a.lat) && !isNaN(a.lon));
+      }).filter(a => a && typeof a.lat === "number" && typeof a.lon === "number" && !isNaN(a.lat) && !isNaN(a.lon));
 
       window.afspraken = afspraken;
     });
