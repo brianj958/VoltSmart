@@ -1541,7 +1541,7 @@ async function laadAfspraken() {
     let geldigeCount = 0;
 
     const afspraken = rows.map((cols, index) => {
-      if (cols.length < 10 || !cols[2] || !cols[3] || !cols[8] || !cols[9]) {
+      if (cols.length < 10 || !cols[2]  // klantnaam || !cols[8] || !cols[9]) {
         console.warn(`Rij ${index + 2} overgeslagen: ontbrekende data of verkeerde structuur.`, cols);
         return null;
       }
@@ -1550,14 +1550,7 @@ async function laadAfspraken() {
       return {
         datum: cols[0],
         medewerker: cols[1],
-        klant: cols[2],
-        adres: cols[3],
-        status: cols[4],
-        tijd: cols[5],
-        lat: parseFloat((cols[8] || "").replace(",", ".")),
-        lon: parseFloat((cols[9] || "").replace(",", "."))
-        medewerker: cols[1],
-        klant: cols[2],
+        klantnaam: cols[2],
         adres: cols[3],
         status: cols[4],
         tijd: cols[5],
@@ -1583,7 +1576,7 @@ function logConflict(afspraak1, afspraak2, verschilMin) {
   const container = document.getElementById("logList");
   const entry = document.createElement("div");
   entry.className = "conflict-entry";
-  entry.innerText = `🔶 ${afspraak1.klant} (${afspraak1.tijd}) → ${afspraak2.klant} (${afspraak2.tijd}): Advies +${verschilMin} min`;
+  entry.innerText = `🔶 ${afspraak1.klantnaam} (${afspraak1.tijd}) → ${afspraak2.klantnaam} (${afspraak2.tijd}): Advies +${verschilMin} min`;
   container.appendChild(entry);
 }
 function clearLog() {
