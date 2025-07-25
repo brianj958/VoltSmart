@@ -1524,132 +1524,51 @@
     }
   </script>
 <script>
-function logConflict(afspraak1, afspraak2, verschilMin) {
-  const container = document.getElementById("logList");
-  const entry = document.createElement("div");
-  entry.className = "conflict-entry";
-  entry.innerText = `🔶 ${afspraak1.klant} (${afspraak1.tijd}) → ${afspraak2.klant} (${afspraak2.tijd}): Advies +${verschilMin} min`;
-  container.appendChild(entry);
-}
+const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv";
 
-function clearLog() {
-  const container = document.getElementById("logList");
-  container.innerHTML = "";
-}
+async function laadAfspraken() {
+  try {
+    const response = await fetch(sheetURL);
+    const csvText = await response.text();
 
-
-let directionsService;
-let markers = [];
-
-function parseDatumTijd(datum, tijd) {
-  const [dag, maand, jaar] = datum.split("-").map(Number);
-  const [uur, min] = tijd.split(":").map(Number);
-  return new Date(jaar < 100 ? 2000 + jaar : jaar, maand - 1, dag, uur, min);
-}
-
-async function checkRoutes() {
-  clearLog();
-  await laadAfspraken();
-  plaatsMarkers(window.afspraken);
-      if (!window.afspraken || window.afspraken.length < 2) {
-        alert("Niet genoeg afspraken om te controleren.");
-        return;
-      }
-
-      const sorted = [...window.afspraken].sort((a, b) => {
-        return parseDatumTijd(a.datum, a.tijd) - parseDatumTijd(b.datum, b.tijd);
-      });
-
-      for (let i = 0; i < sorted.length - 1; i++) {
-        const afspraak1 = sorted[i];
-        const afspraak2 = sorted[i + 1];
-
-        const vertrekTijd = new Date(parseDatumTijd(afspraak1.datum, afspraak1.tijd).getTime() + 60 * 60000);
-
-        await new Promise((resolve) => {
-          directionsService.route({
-            origin: afspraak1.adres,
-            destination: afspraak2.adres,
-            travelMode: 'DRIVING',
-            drivingOptions: {
-              departureTime: vertrekTijd,
-              trafficModel: 'pessimistic'
-            }
-          }, (result, status) => {
-            if (status === 'OK') {
-              const duurMinuten = result.routes[0].legs[0].duration.value / 60;
-              const aankomst = new Date(vertrekTijd.getTime() + duurMinuten * 60000);
-              const geplande = parseDatumTijd(afspraak2.datum, afspraak2.tijd);
-
-              if (aankomst > geplande) {
-                const verschilMin = Math.ceil((aankomst - geplande) / 60000);
-                logConflict(afspraak1, afspraak2, verschilMin);
-                alert(`Niet haalbaar tussen ${afspraak1.tijd} en ${afspraak2.tijd}\n` +
-                      `Van ${afspraak1.klant} naar ${afspraak2.klant}\n` +
-                      `Advies: verplaats ${afspraak2.klant} minimaal ${verschilMin} minuten later.`);
-
-                const markerIndex = window.afspraken.indexOf(afspraak2);
-                if (markers[markerIndex]) {
-                  markers[markerIndex].setIcon('https://maps.google.com/mapfiles/ms/icons/orange-dot.png');
-                }
-              } else {
-                console.log(`✅ Haalbaar van ${afspraak1.klant} naar ${afspraak2.klant}`);
-              }
-            } else {
-              console.warn('Routeberekening mislukt:', status);
-            }
-            resolve();
-          });
-        });
-      }
-    }
-
-function laadAfsprakenNieuwe(sheetURL) {
-  fetch(sheetURL)
-    .then(res => res.text())
-    .then(text => {
-      const rows = text.split("\n").slice(1);
-      let geldigeCount = 0;
-const afspraken = rows.map((row, index) => {
-        const cols = row.split(',').map(col => col.trim());
-        if (cols.length < 10 || !cols[2] || !cols[8] || !cols[9]) {
-          console.warn(`Rij ${index + 2} overgeslagen: ontbrekende data of verkeerde structuur.`, cols);
-          return null;
-        }
-        geldigeCount++;
-
-        const cols = row.split(',').map(col => col.trim());
-        if (cols.length < 10 || !cols[2] || !cols[8] || !cols[9]) {
-          console.warn(`Rij ${index + 2} overgeslagen: ontbrekende data.`);
-          return null;
-        }
-        const cols = row.split(',').map(col => col.trim());
-        if (cols.length < 8 || !cols[2]) {
-          console.warn(`Rij ${index + 2} overgeslagen: ontbrekende klantnaam of kolommen.`);
-          return null;
-        }
-        const cols = row.split(',').map(col => col.trim());
-        if (!cols[2]) return null; // klantnaam ontbreekt
-        return {
-          datum: cols[0],
-          medewerker: cols[1],
-          klant: cols[2],
-          adres: cols[3],
-          status: cols[4],
-          tijd: cols[5],
-          lat: parseFloat(cols[8]),
-          lon: parseFloat(cols[9])
-        };
-      }).filter(a => a && typeof a.lat === "number" && typeof a.lon === "number" && !isNaN(a.lat) && !isNaN(a.lon));
-
-      window.afspraken = afspraken;
-console.log(`✅ ${geldigeCount} afspraken geladen.`);
-if (geldigeCount === 0) alert("⚠ Geen geldige afspraken gevonden. Controleer je Google Sheet structuur.");
+    const parsed = Papa.parse(csvText, {
+      header: false,
+      skipEmptyLines: true
     });
-}
 
-function initMap() {
-  directionsService = new google.maps.DirectionsService();
+    const rows = parsed.data.slice(1); // eerste rij = headers
+    let geldigeCount = 0;
+
+    const afspraken = rows.map((cols, index) => {
+      if (cols.length < 10 || !cols[2] || !cols[8] || !cols[9]) {
+        console.warn(`Rij ${index + 2} overgeslagen: ontbrekende data of verkeerde structuur.`, cols);
+        return null;
+      }
+
+      geldigeCount++;
+      return {
+        datum: cols[0],
+        medewerker: cols[1],
+        klant: cols[2],
+        adres: cols[3],
+        status: cols[4],
+        tijd: cols[5],
+        lat: parseFloat(cols[8]),
+        lon: parseFloat(cols[9])
+      };
+    }).filter(a => a && !isNaN(a.lat) && !isNaN(a.lon));
+
+    window.afspraken = afspraken;
+    plaatsMarkers(afspraken);
+
+    console.log(`✅ ${geldigeCount} afspraken geladen.`);
+    if (geldigeCount === 0) {
+      alert("⚠ Geen geldige afspraken gevonden. Controleer je Google Sheet structuur.");
+    }
+  } catch (err) {
+    console.error("Fout bij laden afspraken:", err);
+    alert("⚠ Er is een fout opgetreden bij het laden van de afspraken.");
+  }
 }
 </script>
 </body>
