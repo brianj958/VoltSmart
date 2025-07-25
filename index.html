@@ -436,23 +436,16 @@
     }
   
 #conflictLog {
-  right: 10px;
-  left: auto;
-  right: 10px;
-  left: auto;
   position: absolute;
-  top: 60px;
-  left: 10px;
-  z-index: 1000;
-  background: rgba(255,255,255,0.95);
-  padding: 10px;
-  max-height: 300px;
-  overflow-y: auto;
+  top: 10px;
+  right: 10px;
   width: 300px;
-  font-family: sans-serif;
-  font-size: 14px;
-  border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ccc;
+  padding: 10px;
+  z-index: 9999;
 }
 #conflictLog h3 {
   margin-top: 0;
@@ -462,6 +455,12 @@
   margin-bottom: 8px;
   border-bottom: 1px solid #ccc;
   padding-bottom: 5px;
+}
+
+#toolbar input, #toolbar select {
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
 }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script></head>
@@ -493,7 +492,14 @@
     </label>
 <button id="clear-selection"><i class="fas fa-trash"></i> Wis selectie</button><button id="checkRoutesBtn" onclick="checkRoutes()">Check haalbaarheid afspraken</button>
 </div>
-<div id="conflictLog"><h3>Conflictlog</h3><div id="logList"></div></div><div id="map"></div>
+<div id="conflictLog"><h3>Conflictlog</h3><div id="logList"></div></div><div id="toolbar" style="padding:10px; background:#f3f3f3; display:flex; gap:10px; align-items:center;">
+<input id="zoekInput" placeholder="Zoek klant of adres..." style="flex:1; padding:6px;" type="text"/>
+<select id="dagFilter" style="padding:6px;">
+<option value="">Alle dagen</option>
+</select>
+<button onclick="wisSelectie()">Wis selectie</button>
+<button onclick="checkHaalbaarheid()">Check haalbaarheid</button>
+</div><div id="map"></div>
 <div id="travel-info">
 <strong><i class="fas fa-route"></i> Reistijd tussen geselecteerde afspraken:</strong>
 <div id="travel-details"></div>
@@ -1583,6 +1589,92 @@ function logConflict(afspraak1, afspraak2, verschilMin) {
 function clearLog() {
   const container = document.getElementById("logList");
   container.innerHTML = "";
+}
+
+
+let alleAfspraken = [];
+
+function filterOpDag(dag) {
+  const gefilterd = dag ? alleAfspraken.filter(a => a.datum === dag) : alleAfspraken;
+  toonMarkers(gefilterd);
+}
+
+document.getElementById("dagFilter").addEventListener("change", function() {
+  filterOpDag(this.value);
+});
+
+document.getElementById("zoekInput").addEventListener("input", function() {
+  const zoekterm = this.value.toLowerCase();
+  const resultaten = alleAfspraken.filter(a =>
+    a.klantnaam.toLowerCase().includes(zoekterm) ||
+    a.adres.toLowerCase().includes(zoekterm)
+  );
+  toonMarkers(resultaten);
+});
+
+function vulDagFilter() {
+  const uniekeDagen = [...new Set(alleAfspraken.map(a => a.datum))].sort();
+  const select = document.getElementById("dagFilter");
+  uniekeDagen.forEach(d => {
+    const opt = document.createElement("option");
+    opt.value = d;
+    opt.textContent = d;
+    select.appendChild(opt);
+  });
+}
+
+function wisSelectie() {
+  alleMarkers.forEach(m => m.setMap(null));
+  if (routePolyline) routePolyline.setMap(null);
+  document.getElementById("logList").innerHTML = "";
+}
+
+let directionsService = new google.maps.DirectionsService();
+let routePolyline = null;
+
+function checkHaalbaarheid() {
+  const afsprakenPerDag = {};
+  alleAfspraken.forEach(a => {
+    if (!afsprakenPerDag[a.datum]) afsprakenPerDag[a.datum] = [];
+    afsprakenPerDag[a.datum].push(a);
+  });
+
+  document.getElementById("logList").innerHTML = "";
+
+  Object.values(afsprakenPerDag).forEach(lijst => {
+    lijst.sort((a, b) => new Date(a.datum + ' ' + a.tijd) - new Date(b.datum + ' ' + b.tijd));
+    for (let i = 0; i < lijst.length - 1; i++) {
+      const a1 = lijst[i];
+      const a2 = lijst[i + 1];
+      const vertrekTijd = new Date(a1.datum + ' ' + a1.tijd);
+      vertrekTijd.setMinutes(vertrekTijd.getMinutes() + 60); // afspraakduur 60 min
+
+      directionsService.route({
+        origin: { lat: a1.lat, lng: a1.lon },
+        destination: { lat: a2.lat, lng: a2.lon },
+        travelMode: google.maps.TravelMode.DRIVING,
+        drivingOptions: {
+          departureTime: new Date(),
+          trafficModel: 'bestguess'
+        }
+      }, (result, status) => {
+        if (status === 'OK') {
+          const reistijd = result.routes[0].legs[0].duration.value / 60; // in minuten
+          const nodigTot = new Date(vertrekTijd.getTime() + reistijd * 60000);
+          const geplande = new Date(a2.datum + ' ' + a2.tijd);
+          const verschil = (geplande - nodigTot) / 60000;
+
+          if (verschil < 0) {
+            const advies = Math.ceil(Math.abs(verschil));
+            const div = document.createElement("div");
+            div.className = "conflict-entry";
+            div.innerHTML = `<strong>${a2.klantnaam}</strong>: verplaats afspraak minimaal <strong>${advies} min</strong>`;
+            document.getElementById("logList").appendChild(div);
+          }
+        }
+      });
+    }
+  });
 }
 </script>
 </body>
