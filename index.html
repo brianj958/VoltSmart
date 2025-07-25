@@ -435,18 +435,7 @@
       100% { transform: scale(1); }
     }
   
-#conflictLog {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 300px;
-  max-height: 90vh;
-  overflow-y: auto;
-  background: white;
-  border: 1px solid #ccc;
-  padding: 10px;
-  z-index: 9999;
-}
+
 #conflictLog h3 {
   margin-top: 0;
   font-size: 16px;
@@ -461,6 +450,25 @@
   font-size: 14px;
   border: 1px solid #ccc;
   border-radius: 4px;
+}
+
+#conflictLog {
+  position: fixed;
+  top: 80px;
+  right: 10px;
+  width: 300px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ccc;
+  padding: 10px;
+  z-index: 9999;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+.conflict-entry {
+  margin-bottom: 8px;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 5px;
 }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script></head>
@@ -1658,7 +1666,7 @@ function checkHaalbaarheid() {
           trafficModel: 'bestguess'
         }
       }, (result, status) => {
-        if (status === 'OK') {
+        if (status === 'OK' && result.routes[0] && result.routes[0].legs[0]) {
           const reistijd = result.routes[0].legs[0].duration.value / 60; // in minuten
           const nodigTot = new Date(vertrekTijd.getTime() + reistijd * 60000);
           const geplande = new Date(a2.datum + ' ' + a2.tijd);
