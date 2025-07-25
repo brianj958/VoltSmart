@@ -436,6 +436,8 @@
     }
   
 #conflictLog {
+  right: 10px;
+  left: auto;
   position: absolute;
   top: 60px;
   left: 10px;
@@ -1616,8 +1618,8 @@ function laadAfsprakenNieuwe(sheetURL) {
           adres: cols[3],
           status: cols[4],
           tijd: cols[5],
-          lat: parseFloat(cols[8]),
-          lon: parseFloat(cols[9])
+          lat: parseFloat(cols[6]),
+          lon: parseFloat(cols[7])
         };
       }).filter(a => !isNaN(a.lat) && !isNaN(a.lon));
 
