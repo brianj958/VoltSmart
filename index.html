@@ -1611,6 +1611,11 @@ function laadAfsprakenNieuwe(sheetURL) {
       const rows = text.split("\n").slice(1);
       const afspraken = rows.map((row, index) => {
         const cols = row.split(',').map(col => col.trim());
+        if (cols.length < 10 || !cols[2] || !cols[8] || !cols[9]) {
+          console.warn(`Rij ${index + 2} overgeslagen: ontbrekende data.`);
+          return null;
+        }
+        const cols = row.split(',').map(col => col.trim());
         if (cols.length < 8 || !cols[2]) {
           console.warn(`Rij ${index + 2} overgeslagen: ontbrekende klantnaam of kolommen.`);
           return null;
@@ -1624,8 +1629,8 @@ function laadAfsprakenNieuwe(sheetURL) {
           adres: cols[3],
           status: cols[4],
           tijd: cols[5],
-          lat: parseFloat(cols[6]),
-          lon: parseFloat(cols[7])
+          lat: parseFloat(cols[8]),
+          lon: parseFloat(cols[9])
         };
       }).filter(a => a && typeof a.lat === "number" && typeof a.lon === "number" && !isNaN(a.lat) && !isNaN(a.lon));
 
