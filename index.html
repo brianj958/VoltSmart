@@ -438,7 +438,7 @@
 </head>
 <body>
 
-<button id="checkRoutesBtn">Check haalbaarheid afspraken</button>
+<button id="checkRoutesBtn" onclick="checkRoutes()">Check haalbaarheid afspraken</button>
 
   <div class="loading" id="loading">
     <div class="spinner"></div>
@@ -1513,10 +1513,7 @@ function parseDatumTijd(datum, tijd) {
   return new Date(jaar < 100 ? 2000 + jaar : jaar, maand - 1, dag, uur, min);
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  const btn = document.getElementById("checkRoutesBtn");
-  if (btn) {
-    btn.addEventListener("click", async () => {
+function checkRoutes() {
       if (!window.afspraken || window.afspraken.length < 2) {
         alert("Niet genoeg afspraken om te controleren.");
         return;
@@ -1567,9 +1564,7 @@ document.addEventListener("DOMContentLoaded", () => {
           });
         });
       }
-    });
-  }
-});
+    }
 
 function laadAfsprakenNieuwe(sheetURL) {
   fetch(sheetURL)
