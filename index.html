@@ -746,20 +746,21 @@
               continue;
             }
 
-            const datum = cols[0];
-            const medewerker = cols[1];
-            const adres = cols[2];
-            const status = cols[3] || "Gepland";
-            const tijd = cols[4];
-            const lat = parseFloat(cols[7]);
-            const lon = parseFloat(cols[8]);
+        const datum = cols[0];
+const medewerker = cols[1];
+const klantnaam = cols[2];
+const adres = cols[3];
+const status = cols[4] || "Gepland";
+const tijd = cols[5];
+const lat = parseFloat((cols[8] || "").replace(",", "."));
+const lon = parseFloat((cols[9] || "").replace(",", "."));
 
-            // Validatie
-            if (!datum || !medewerker || !adres || !tijd || isNaN(lat) || isNaN(lon)) {
-              console.warn("Ontbrekende of ongeldige data in rij:", row);
-              errorCount++;
-              continue;
-            }
+// Validatie
+if (!datum || !medewerker || !klantnaam || !adres || !tijd || isNaN(lat) || isNaN(lon)) {
+  console.warn("Ontbrekende of ongeldige data in rij:", cols);
+  errorCount++;
+  continue;
+}
 
             // Probeer datum te parsen voor validatie
             try {
