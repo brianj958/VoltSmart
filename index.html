@@ -1609,7 +1609,15 @@ function laadAfsprakenNieuwe(sheetURL) {
     .then(res => res.text())
     .then(text => {
       const rows = text.split("\n").slice(1);
-      const afspraken = rows.map((row, index) => {
+      let geldigeCount = 0;
+const afspraken = rows.map((row, index) => {
+        const cols = row.split(',').map(col => col.trim());
+        if (cols.length < 10 || !cols[2] || !cols[8] || !cols[9]) {
+          console.warn(`Rij ${index + 2} overgeslagen: ontbrekende data of verkeerde structuur.`, cols);
+          return null;
+        }
+        geldigeCount++;
+
         const cols = row.split(',').map(col => col.trim());
         if (cols.length < 10 || !cols[2] || !cols[8] || !cols[9]) {
           console.warn(`Rij ${index + 2} overgeslagen: ontbrekende data.`);
@@ -1635,6 +1643,8 @@ function laadAfsprakenNieuwe(sheetURL) {
       }).filter(a => a && typeof a.lat === "number" && typeof a.lon === "number" && !isNaN(a.lat) && !isNaN(a.lon));
 
       window.afspraken = afspraken;
+console.log(`✅ ${geldigeCount} afspraken geladen.`);
+if (geldigeCount === 0) alert("⚠ Geen geldige afspraken gevonden. Controleer je Google Sheet structuur.");
     });
 }
 
