@@ -438,6 +438,8 @@
 #conflictLog {
   right: 10px;
   left: auto;
+  right: 10px;
+  left: auto;
   position: absolute;
   top: 60px;
   left: 10px;
@@ -464,7 +466,7 @@
 </style>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script></head>
 <body>
-<button id="checkRoutesBtn" onclick="checkRoutes()">Check haalbaarheid afspraken</button>
+
 <div class="loading" id="loading">
 <div class="spinner"></div>
 <div>Laden van afspraken...</div>
@@ -490,7 +492,7 @@
 <label>
 <input checked="" id="showPastAppointments" type="checkbox"/> Toon verleden afspraken
     </label>
-<button id="clear-selection"><i class="fas fa-trash"></i> Wis selectie</button>
+<button id="clear-selection"><i class="fas fa-trash"></i> Wis selectie</button><button id="checkRoutesBtn" onclick="checkRoutes()">Check haalbaarheid afspraken</button>
 </div>
 <div id="conflictLog"><h3>Conflictlog</h3><div id="logList"></div></div><div id="map"></div>
 <div id="travel-info">
@@ -1569,6 +1571,18 @@ async function laadAfspraken() {
     console.error("Fout bij laden afspraken:", err);
     alert("⚠ Er is een fout opgetreden bij het laden van de afspraken.");
   }
+}
+
+function logConflict(afspraak1, afspraak2, verschilMin) {
+  const container = document.getElementById("logList");
+  const entry = document.createElement("div");
+  entry.className = "conflict-entry";
+  entry.innerText = `🔶 ${afspraak1.klant} (${afspraak1.tijd}) → ${afspraak2.klant} (${afspraak2.tijd}): Advies +${verschilMin} min`;
+  container.appendChild(entry);
+}
+function clearLog() {
+  const container = document.getElementById("logList");
+  container.innerHTML = "";
 }
 </script>
 </body>
