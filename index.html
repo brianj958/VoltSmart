@@ -465,9 +465,7 @@
       <input type="checkbox" id="showPastAppointments" checked /> Toon verleden afspraken
     </label>
     <button id="clear-selection"><i class="fas fa-trash"></i> Wis selectie</button>
-  <button onclick="exportWeekToPDF()">
-  <i class="fas fa-file-pdf"></i> Exporteer naar PDF
-</button></div>
+  </div>
 
   <div id="map"></div>
   <div id="travel-info">
@@ -581,17 +579,7 @@
       return parsedDate;
     }
 
-    
-<script>
-  function getMonday(d) {
-    d = new Date(d);
-    var day = d.getDay(),
-        diff = d.getDate() - day + (day === 0 ? -6 : 1); // maandag als eerste dag
-    return new Date(d.setDate(diff));
-  }
-</script>
-
-window.initMap = async function () {
+    window.initMap = async function () {
         showLoading(true);
 
         try {
@@ -878,12 +866,6 @@ window.initMap = async function () {
       const uniekeOperators = [...new Set(allOps)].sort();
 
       operatorSelect.innerHTML = '<option value="">-- Iedereen --</option>';
-
-      const vandaag = getTodayString();
-      if ([...datumSelect.options].some(opt => opt.value === vandaag)) {
-        datumSelect.value = vandaag;
-      }
-
       uniekeOperators.forEach((o) => {
         const opt = document.createElement("option");
         opt.value = o;
@@ -968,7 +950,21 @@ window.initMap = async function () {
             `;
         }
 
-        const svgContent = '<svg><text>📍</text></svg>';  // simplified for repair
+        const svgContent = `
+            <svg width="${size + 10}" height="${size + 10}" viewBox="0 0 ${size + 10} ${size + 10}" fill="none" xmlns="http://www.w3.org/2000/svg">
+                ${pulseAnimation}
+                ${circleSvg}
+                <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="${size}px" font-family="Segoe UI Emoji, Apple Color Emoji, Segoe UI Symbol, Noto Color Emoji" fill="${emojiColor}" style="text-shadow: ${textShadow}; user-select: none;">
+                    ${emoji}
+                </text>
+                <defs>
+                    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="rgba(22, 33, 62, 0.8)" />
+                        <stop offset="100%" stop-color="rgba(15, 52, 96, 0.8)" />
+                    </linearGradient>
+                </defs>
+            </svg>
+        `;
 
         return {
             url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svgContent),
@@ -1503,115 +1499,5 @@ window.initMap = async function () {
         }
     }
   </script>
-<div id="pdf-output" style="display: none;"></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<script>
-  function exportWeekToPDF() {
-    const outputDiv = document.getElementById('pdf-output');
-    const selectedDatum = document.getElementById("datumSelect").value;
-    const weekFilterDate = selectedDatum ? parseDatumEnTijd(selectedDatum, "00:00") : new Date();
-    const startOfWeek = new Date(weekFilterDate);
-    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + 1); // maandag
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(endOfWeek.getDate() + 6); // zondag
-
-    const weekAfspraken = afsprakenData.filter((a) => {
-      try {
-        const afspraakDate = parseDatumEnTijd(a.datum, a.tijd);
-        return afspraakDate >= startOfWeek && afspraakDate <= endOfWeek;
-      } catch (e) {
-        return false;
-      }
-    });
-
-    if (weekAfspraken.length === 0) {
-      alert("Geen afspraken gevonden voor deze week.");
-      return;
-    }
-
-    const grouped = {};
-    weekAfspraken.forEach(a => {
-      if (!grouped[a.datum]) grouped[a.datum] = [];
-      grouped[a.datum].push(a);
-    });
-
-    let html = `<h2>Weekoverzicht afspraken</h2>`;
-    Object.keys(grouped).sort((a, b) => parseDatumEnTijd(a, "00:00") - parseDatumEnTijd(b, "00:00")).forEach(datum => {
-      html += `<h3>${datum}</h3><ul>`;
-      grouped[datum].forEach(a => {
-        html += `<li><strong>${a.tijd}</strong> - ${a.adres} (${a.operators.join(', ')})</li>`;
-      });
-      html += `</ul>`;
-    });
-
-    outputDiv.innerHTML = html;
-    html2pdf().from(outputDiv).set({
-      margin: 10,
-      filename: `afspraken_week.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    }).save();
-  }
-</script>
-<div id="pdf-output" style="display:none;"></div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<script>
-function getMonday(d) {
-  d = new Date(d);
-  var day = d.getDay(),
-      diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  return new Date(d.setDate(diff));
-}
-
-function exportWeekToPDF() {
-  const outputDiv = document.getElementById('pdf-output');
-  const selectedDatum = document.getElementById("datumSelect").value;
-  const weekFilterDate = selectedDatum ? parseDatumEnTijd(selectedDatum, "00:00") : new Date();
-  const startOfWeek = getMonday(weekFilterDate);
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(endOfWeek.getDate() + 6);
-
-  const weekAfspraken = afsprakenData.filter((a) => {
-    try {
-      const afspraakDate = parseDatumEnTijd(a.datum, a.tijd);
-      return afspraakDate >= startOfWeek && afspraakDate <= endOfWeek;
-    } catch (e) {
-      return false;
-    }
-  });
-
-  if (weekAfspraken.length === 0) {
-    alert("Geen afspraken gevonden voor deze week.");
-    return;
-  }
-
-  const grouped = {};
-  weekAfspraken.forEach(a => {
-    if (!grouped[a.datum]) grouped[a.datum] = [];
-    grouped[a.datum].push(a);
-  });
-
-  let html = `<h2>Weekoverzicht afspraken</h2>`;
-  Object.keys(grouped).sort((a, b) => parseDatumEnTijd(a, "00:00") - parseDatumEnTijd(b, "00:00")).forEach(datum => {
-    html += `<h3>${datum}</h3><ul>`;
-    grouped[datum].forEach(a => {
-      html += `<li><strong>${a.tijd}</strong> - ${a.adres} (${a.operators.join(', ')})</li>`;
-    });
-    html += `</ul>`;
-  });
-
-  outputDiv.innerHTML = html;
-  html2pdf().from(outputDiv).set({
-    margin: 10,
-    filename: `afspraken_week.pdf`,
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2 },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-  }).save();
-}
-</script>
-
 </body>
 </html>
