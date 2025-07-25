@@ -581,7 +581,17 @@
       return parsedDate;
     }
 
-    window.initMap = async function () {
+    
+<script>
+  function getMonday(d) {
+    d = new Date(d);
+    var day = d.getDay(),
+        diff = d.getDate() - day + (day === 0 ? -6 : 1); // maandag als eerste dag
+    return new Date(d.setDate(diff));
+  }
+</script>
+
+window.initMap = async function () {
         showLoading(true);
 
         try {
@@ -868,6 +878,12 @@
       const uniekeOperators = [...new Set(allOps)].sort();
 
       operatorSelect.innerHTML = '<option value="">-- Iedereen --</option>';
+
+      const vandaag = getTodayString();
+      if ([...datumSelect.options].some(opt => opt.value === vandaag)) {
+        datumSelect.value = vandaag;
+      }
+
       uniekeOperators.forEach((o) => {
         const opt = document.createElement("option");
         opt.value = o;
