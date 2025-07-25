@@ -1,11 +1,12 @@
 <!DOCTYPE html>
+
 <html>
 <head>
-  <title>Afsprakenkaart - Premium Edition</title>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- Verbeterde Google Maps API loading -->
-  <script>
+<title>Afsprakenkaart - Premium Edition</title>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<!-- Verbeterde Google Maps API loading -->
+<script>
     function loadGoogleMaps() {
       const script = document.createElement('script');
       script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyDTvDRPKBT7KDONeDgekEXlN1_CMZUtX4U&libraries=places,geometry&callback=initMap&loading=async';
@@ -18,9 +19,8 @@
     }
     window.onload = loadGoogleMaps;
   </script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
-
-  <style>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"/>
+<style>
     * {
       box-sizing: border-box;
     }
@@ -434,49 +434,68 @@
       50% { transform: scale(1.1); }
       100% { transform: scale(1); }
     }
-  </style>
+  
+#conflictLog {
+  position: absolute;
+  top: 60px;
+  left: 10px;
+  z-index: 1000;
+  background: rgba(255,255,255,0.95);
+  padding: 10px;
+  max-height: 300px;
+  overflow-y: auto;
+  width: 300px;
+  font-family: sans-serif;
+  font-size: 14px;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+#conflictLog h3 {
+  margin-top: 0;
+  font-size: 16px;
+}
+.conflict-entry {
+  margin-bottom: 8px;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 5px;
+}
+</style>
 </head>
 <body>
-
 <button id="checkRoutesBtn" onclick="checkRoutes()">Check haalbaarheid afspraken</button>
-
-  <div class="loading" id="loading">
-    <div class="spinner"></div>
-    <div>Laden van afspraken...</div>
-  </div>
-
-  <div id="topbar">
-    <div id="title"><i class="fas fa-map-marked-alt"></i> Afsprakenkaart</div>
-    <img id="logo" src="https://cdn.prod.website-files.com/68503ddc6fb75a92cad47e2a/68515d53bc9b66440249398b_Logo%20(1).svg" alt="Voltsmart Logo" draggable="false" />
-    <div id="counter">
-      <div class="count-today"><i class="fas fa-calendar-day"></i> Vandaag: <span id="count-today">0</span></div>
-      <div class="count-total"><i class="fas fa-chart-bar"></i> Totaal: <span id="count-total">0</span></div>
-    </div>
-    <input type="text" id="searchInput" placeholder="🔍 Zoek adres of postcode" />
-  </div>
-
-  <div id="controls">
-    <label for="datumSelect"><i class="fas fa-calendar"></i> Datum:</label>
-    <select id="datumSelect">
-      <option value="">-- Alles --</option>
-    </select>
-    <label for="operatorSelect"><i class="fas fa-user"></i> Operator:</label>
-    <select id="operatorSelect">
-      <option value="">-- Iedereen --</option>
-    </select>
-    <label>
-      <input type="checkbox" id="showPastAppointments" checked /> Toon verleden afspraken
+<div class="loading" id="loading">
+<div class="spinner"></div>
+<div>Laden van afspraken...</div>
+</div>
+<div id="topbar">
+<div id="title"><i class="fas fa-map-marked-alt"></i> Afsprakenkaart</div>
+<img alt="Voltsmart Logo" draggable="false" id="logo" src="https://cdn.prod.website-files.com/68503ddc6fb75a92cad47e2a/68515d53bc9b66440249398b_Logo%20(1).svg"/>
+<div id="counter">
+<div class="count-today"><i class="fas fa-calendar-day"></i> Vandaag: <span id="count-today">0</span></div>
+<div class="count-total"><i class="fas fa-chart-bar"></i> Totaal: <span id="count-total">0</span></div>
+</div>
+<input id="searchInput" placeholder="🔍 Zoek adres of postcode" type="text"/>
+</div>
+<div id="controls">
+<label for="datumSelect"><i class="fas fa-calendar"></i> Datum:</label>
+<select id="datumSelect">
+<option value="">-- Alles --</option>
+</select>
+<label for="operatorSelect"><i class="fas fa-user"></i> Operator:</label>
+<select id="operatorSelect">
+<option value="">-- Iedereen --</option>
+</select>
+<label>
+<input checked="" id="showPastAppointments" type="checkbox"/> Toon verleden afspraken
     </label>
-    <button id="clear-selection"><i class="fas fa-trash"></i> Wis selectie</button>
-  </div>
-
-  <div id="map"></div>
-  <div id="travel-info">
-    <strong><i class="fas fa-route"></i> Reistijd tussen geselecteerde afspraken:</strong>
-    <div id="travel-details"></div>
-  </div>
-  <div id="legend"></div>
-
+<button id="clear-selection"><i class="fas fa-trash"></i> Wis selectie</button>
+</div>
+<div id="conflictLog"><h3>Conflictlog</h3><div id="logList"></div></div><div id="map"></div>
+<div id="travel-info">
+<strong><i class="fas fa-route"></i> Reistijd tussen geselecteerde afspraken:</strong>
+<div id="travel-details"></div>
+</div>
+<div id="legend"></div>
 <script>
     // ZORG DAT DEZE URL CORRECT IS EN GEEN SPATIES BEVAT!
     const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv"; 
@@ -1502,8 +1521,21 @@
         }
     }
   </script>
-
 <script>
+function logConflict(afspraak1, afspraak2, verschilMin) {
+  const container = document.getElementById("logList");
+  const entry = document.createElement("div");
+  entry.className = "conflict-entry";
+  entry.innerText = `🔶 ${afspraak1.klant} (${afspraak1.tijd}) → ${afspraak2.klant} (${afspraak2.tijd}): Advies +${verschilMin} min`;
+  container.appendChild(entry);
+}
+
+function clearLog() {
+  const container = document.getElementById("logList");
+  container.innerHTML = "";
+}
+
+
 let directionsService;
 let markers = [];
 
@@ -1514,6 +1546,7 @@ function parseDatumTijd(datum, tijd) {
 }
 
 function checkRoutes() {
+  clearLog();
       if (!window.afspraken || window.afspraken.length < 2) {
         alert("Niet genoeg afspraken om te controleren.");
         return;
@@ -1546,6 +1579,7 @@ function checkRoutes() {
 
               if (aankomst > geplande) {
                 const verschilMin = Math.ceil((aankomst - geplande) / 60000);
+                logConflict(afspraak1, afspraak2, verschilMin);
                 alert(`Niet haalbaar tussen ${afspraak1.tijd} en ${afspraak2.tijd}\n` +
                       `Van ${afspraak1.klant} naar ${afspraak2.klant}\n` +
                       `Advies: verplaats ${afspraak2.klant} minimaal ${verschilMin} minuten later.`);
@@ -1593,6 +1627,5 @@ function initMap() {
   directionsService = new google.maps.DirectionsService();
 }
 </script>
-
 </body>
 </html>
