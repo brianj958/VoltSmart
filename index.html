@@ -466,7 +466,6 @@
 </style>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script></head>
 <body>
-
 <div class="loading" id="loading">
 <div class="spinner"></div>
 <div>Laden van afspraken...</div>
@@ -1542,7 +1541,7 @@ async function laadAfspraken() {
     let geldigeCount = 0;
 
     const afspraken = rows.map((cols, index) => {
-      if (cols.length < 10 || !cols[2] || !cols[8] || !cols[9]) {
+      if (cols.length < 10 || !cols[2] || !cols[3] || !cols[8] || !cols[9]) {
         console.warn(`Rij ${index + 2} overgeslagen: ontbrekende data of verkeerde structuur.`, cols);
         return null;
       }
@@ -1550,6 +1549,13 @@ async function laadAfspraken() {
       geldigeCount++;
       return {
         datum: cols[0],
+        medewerker: cols[1],
+        klant: cols[2],
+        adres: cols[3],
+        status: cols[4],
+        tijd: cols[5],
+        lat: parseFloat((cols[8] || "").replace(",", ".")),
+        lon: parseFloat((cols[9] || "").replace(",", "."))
         medewerker: cols[1],
         klant: cols[2],
         adres: cols[3],
