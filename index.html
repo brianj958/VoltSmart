@@ -483,6 +483,19 @@
   border-bottom: 1px dashed #ccc;
   padding-bottom: 4px;
 }
+
+#adviesContainer {
+  margin-top: 10px;
+  background: #f3fff3;
+  border: 1px solid #b4e0b4;
+  padding: 10px;
+  font-size: 14px;
+}
+.advies-entry {
+  margin-bottom: 6px;
+  border-bottom: 1px dashed #ccc;
+  padding-bottom: 4px;
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script></head>
 <body>
@@ -511,7 +524,7 @@
 <label>
 <input checked="" id="showPastAppointments" type="checkbox"/> Toon verleden afspraken
     </label>
-<button id="clear-selection"><i class="fas fa-trash"></i> Wis selectie</button><button id="checkRoutesBtn" onclick="checkRoutes()">Check haalbaarheid afspraken</button>
+<button id="clear-selection"><i class="fas fa-trash"></i> Wis selectie</button><button id="checkRoutesBtn" onclick="checkRoutes()">Check haalbaarheid afspraken</button><button id="advice-brian-btn" onclick="suggestBrianAssignments()">Adviseer Brian</button>
 </div>
 <div id="toolbar" style="padding:10px; background:#f3f3f3; display:flex; gap:10px; align-items:center;">
 <input id="zoekInput" placeholder="Zoek klant of adres..." style="flex:1; padding:6px;" type="text"/>
@@ -519,13 +532,12 @@
 <option value="">Alle dagen</option>
 </select>
 <button onclick="wisSelectie()">Wis selectie</button>
-
 </div><div id="map"></div>
 <div id="travel-info">
 <strong><i class="fas fa-route"></i> Reistijd tussen geselecteerde afspraken:</strong>
 <div id="travel-details"></div>
 </div>
-<div id="legend"></div><div id="conflictContainer"><h4>Conflicten</h4><div id="logList"></div></div>
+<div id="legend"></div><div id="adviesContainer"><h4>Adviezen</h4><div id="adviesList"></div></div><div id="conflictContainer"><h4>Conflicten</h4><div id="logList"></div></div>
 <script>
     // ZORG DAT DEZE URL CORRECT IS EN GEEN SPATIES BEVAT!
     const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv"; 
@@ -1737,6 +1749,109 @@ function checkHaalbaarheid() {
       });
     }
   });
+}
+
+async function getTravelTimeMinutes(origin, destination) {
+  return new Promise((resolve) => {
+    directionsService.route({
+      origin,
+      destination,
+      travelMode: google.maps.TravelMode.DRIVING
+    }, (result, status) => {
+      if (status === 'OK' && result.routes[0] && result.routes[0].legs[0]) {
+        resolve(result.routes[0].legs[0].duration.value / 60);
+      } else {
+        resolve(0);
+      }
+    });
+  });
+}
+
+async function bestOperatorForAppointment(afspraak) {
+  const service = new google.maps.DistanceMatrixService();
+  const origins = Object.values(operatorRegions);
+  const operators = Object.keys(operatorRegions);
+
+  return new Promise((resolve) => {
+    service.getDistanceMatrix({
+      origins,
+      destinations: [{ lat: afspraak.lat, lng: afspraak.lon }],
+      travelMode: google.maps.TravelMode.DRIVING
+    }, (res, status) => {
+      if (status !== 'OK' || !res.rows) {
+        resolve(null);
+        return;
+      }
+      let best = null;
+      let bestDur = Infinity;
+      res.rows.forEach((row, idx) => {
+        const elem = row.elements[0];
+        if (elem.status === 'OK' && elem.duration.value < bestDur) {
+          bestDur = elem.duration.value;
+          best = operators[idx];
+        }
+      });
+      resolve({ operator: best, duration: bestDur });
+    });
+  });
+}
+
+async function suggestBrianAssignments() {
+  const adviceList = document.getElementById('adviesList');
+  adviceList.innerHTML = '';
+
+  const brianAfspraken = afsprakenData.filter(a => a.operators.map(o => o.toLowerCase()).includes('brian'));
+  if (brianAfspraken.length === 0) {
+    const div = document.createElement('div');
+    div.className = 'advies-entry';
+    div.textContent = 'Geen Brian-afspraken gevonden.';
+    adviceList.appendChild(div);
+    return;
+  }
+
+  for (const afspraak of brianAfspraken) {
+    const best = await bestOperatorForAppointment(afspraak);
+    if (best && best.operator) {
+      afspraak.suggestedOperator = best.operator;
+      afspraak.suggestedDuration = best.duration;
+      const div = document.createElement('div');
+      div.className = 'advies-entry';
+      const minutes = Math.round(best.duration / 60);
+      div.innerHTML = `<strong>${afspraak.klantnaam}</strong> (${afspraak.tijd}) - beste keuze: ${best.operator} (${minutes} min rijden)`;
+      adviceList.appendChild(div);
+    }
+  }
+
+  const groups = {};
+  brianAfspraken.forEach(a => {
+    if (!a.suggestedOperator) return;
+    const key = `${a.datum}_${a.suggestedOperator}`;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(a);
+  });
+
+  for (const list of Object.values(groups)) {
+    list.sort((a, b) => new Date(a.datum + ' ' + a.tijd) - new Date(b.datum + ' ' + b.tijd));
+    for (let i = 0; i < list.length - 1; i++) {
+      const a1 = list[i];
+      const a2 = list[i + 1];
+      const vertrek = new Date(a1.datum + ' ' + a1.tijd);
+      vertrek.setMinutes(vertrek.getMinutes() + 60);
+      const travelMin = await getTravelTimeMinutes({ lat: a1.lat, lng: a1.lon }, { lat: a2.lat, lng: a2.lon });
+      const aankomst = new Date(vertrek.getTime() + travelMin * 60000);
+      const geplande = new Date(a2.datum + ' ' + a2.tijd);
+      const diff = (aankomst - geplande) / 60000;
+      if (diff > 0) {
+        const adviesMin = Math.ceil(diff);
+        const hh = String(aankomst.getHours()).padStart(2, '0');
+        const mm = String(aankomst.getMinutes()).padStart(2, '0');
+        const div = document.createElement('div');
+        div.className = 'advies-entry';
+        div.innerHTML = `<strong>${a2.klantnaam}</strong>: verplaats afspraak naar ${hh}:${mm} (minimaal ${adviesMin} min later)`;
+        adviceList.appendChild(div);
+      }
+    }
+  }
 }
 </script>
 </body>
