@@ -16,12 +16,30 @@
     }
     window.onload = loadGoogleMaps;
 
+
 async function suggestBrianAssignments() {
-  const brianAfspraken = afsprakenData.filter(a => a.operators.map(o => o.toLowerCase()).includes('brian'));
+  const brianAfspraken = afsprakenData
+    .filter(a => a.operators.map(o => o.toLowerCase()).includes('brian'))
+    .sort((a, b) => {
+      const dateA = parseDatumEnTijd(a.datum, a.tijd);
+      const dateB = parseDatumEnTijd(b.datum, b.tijd);
+      return dateA - dateB;
+    });
+
   if (brianAfspraken.length === 0) {
     alert('Geen Brian-afspraken gevonden.');
     return;
   }
+
+  const suggestions = brianAfspraken
+    .map(a => `${a.datum} ${a.tijd} - ${a.adres ?? ''}`.trim())
+    .join('
+');
+
+  alert('Brian suggesties:
+' + suggestions);
+}
+
 
   
 
@@ -1615,7 +1633,7 @@ async function laadAfspraken() {
     let geldigeCount = 0;
 
     const afspraken = rows.map((cols, index) => {
-      if (cols.length < 10 || !cols[2]  // klantnaam || !cols[8] || !cols[9]) {
+      if (cols.length < 10 || !cols[2] || !cols[8] || !cols[9]) {
         console.warn("Rij " + (index + 2) + " overgeslagen: ontbrekende data of verkeerde structuur.", cols);
         return null;
       }
@@ -1702,94 +1720,7 @@ let directionsService = new google.maps.DirectionsService();
 
 function checkHaalbaarheid() {
   document.getElementById("logList").innerHTML = "";
-  const afsprakenPerDag = {};
-
-  alleAfspraken.forEach(a => {
-    if (!afsprakenPerDag[a.datum]) afsprakenPerDag[a.datum] = [];
-    afsprakenPerDag[a.datum].push(a);
-  });
-
-  Object.values(afsprakenPerDag).forEach(lijst => {
-    lijst.sort((a, b) => new Date(a.datum + ' ' + a.tijd) - new Date(b.datum + ' ' + b.tijd));
-    for (let i = 0; i < lijst.length - 1; i++) {
-      const a1 = lijst[i];
-      const a2 = lijst[i + 1];
-
-      const vertrekTijd = new Date(a1.datum + ' ' + a1.tijd);
-      vertrekTijd.setMinutes(vertrekTijd.getMinutes() + 60); // afspraakduur
-
-      directionsService.route({
-        origin: { lat: a1.lat, lng: a1.lon },
-        destination: { lat: a2.lat, lng: a2.lon },
-        travelMode: google.maps.TravelMode.DRIVING
-      }, (result, status) => {
-        if (status === 'OK' && result.routes[0] && result.routes[0].legs[0]) {
-          const reistijdMin = result.routes[0].legs[0].duration.value / 60;
-          const verwachtAankomst = new Date(vertrekTijd.getTime() + reistijdMin * 60000);
-          const geplandeStart = new Date(a2.datum + ' ' + a2.tijd);
-          const verschil = (geplandeStart - verwachtAankomst) / 60000;
-
-          if (verschil < 0) {
-            const advies = Math.ceil(Math.abs(verschil));
-            const div = document.createElement("div");
-            div.className = "conflict-entry";
-            div.innerHTML = `<strong>${a2.klantnaam}</strong>: Verplaats afspraak minimaal <strong>${advies} min</strong>`;
-            document.getElementById("logList").appendChild(div);
-          }
-        }
-      });
-    }
-  });
-}
-;
-  alleAfspraken.forEach(a => {
-    if (!afsprakenPerDag[a.datum]) afsprakenPerDag[a.datum] = [];
-    afsprakenPerDag[a.datum].push(a);
-  });
-
-  document.getElementById("logList").innerHTML = "";
-
-  Object.values(afsprakenPerDag).forEach(lijst => {
-    lijst.sort((a, b) => new Date(a.datum + ' ' + a.tijd) - new Date(b.datum + ' ' + b.tijd));
-    for (let i = 0; i < lijst.length - 1; i++) {
-      const a1 = lijst[i];
-      const a2 = lijst[i + 1];
-      const vertrekTijd = new Date(a1.datum + ' ' + a1.tijd);
-      vertrekTijd.setMinutes(vertrekTijd.getMinutes() + 60); // afspraakduur 60 min
-
-      directionsService.route({
-        origin: { lat: a1.lat, lng: a1.lon },
-        destination: { lat: a2.lat, lng: a2.lon },
-        travelMode: google.maps.TravelMode.DRIVING,
-        drivingOptions: {
-          departureTime: new Date(),
-          trafficModel: 'bestguess'
-        }
-      }, (result, status) => {
-        if (status === 'OK' && result.routes[0] && result.routes[0].legs[0]) {
-          const reistijd = result.routes[0].legs[0].duration.value / 60; // in minuten
-          const nodigTot = new Date(vertrekTijd.getTime() + reistijd * 60000);
-          const geplande = new Date(a2.datum + ' ' + a2.tijd);
-          const verschil = (geplande - nodigTot) / 60000;
-
-          if (verschil < 0) {
-            const advies = Math.ceil(Math.abs(verschil));
-            const div = document.createElement("div");
-            div.className = "conflict-entry";
-            div.innerHTML = `<strong>${a2.klantnaam}</strong>: verplaats afspraak minimaal <strong>${advies} min</strong>`;
-            document.getElementById("logList").appendChild(div);
-          }
-        }
-      });
-    }
-  });
-}
-
-
-
-
-
-
+  const afsprakenPerDag = {}
 </script>
 </body>
 </html>
