@@ -634,7 +634,7 @@ async function suggestBrianAssignments() {
 <label>
 <input checked="" id="showPastAppointments" type="checkbox"/> Toon verleden afspraken
     </label>
-<button id="clear-selection"><i class="fas fa-trash"></i> Wis selectie</button><button id="checkRoutesBtn" onclick="checkRoutes()">Check haalbaarheid afspraken</button><button id="advice-brian-btn" onclick="suggestBrianAssignments()">Adviseer Brian</button>
+<button id="clear-selection"><i class="fas fa-trash"></i> Wis selectie</button><button id="advice-brian-btn" onclick="suggestBrianAssignments()">Adviseer Brian</button>
 </div>
 <div id="toolbar" style="padding:10px; background:#f3f3f3; display:flex; gap:10px; align-items:center;">
 <input id="zoekInput" placeholder="Zoek klant of adres..." style="flex:1; padding:6px;" type="text"/>
@@ -648,8 +648,7 @@ async function suggestBrianAssignments() {
 <strong><i class="fas fa-route"></i> Reistijd tussen geselecteerde afspraken:</strong>
 <div id="travel-details"></div>
 </div>
-<div id="legend"></div><div id="conflictContainer"><h4>Conflicten</h4><div id="logList"></div></div>
-<script>
+<div id="legend"></div><script>
     // ZORG DAT DEZE URL CORRECT IS EN GEEN SPATIES BEVAT!
     const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv"; 
     const googleAPIKey = "AIzaSyDTvDRPKBT7KDONeDgekEXlN1_CMZUtX4U";
