@@ -69,6 +69,8 @@ async function suggestBrianAssignments() {
       0% { left: -100%; }
       100% { left: 100%; }
 
+    }
+
     #title {
       font-weight: 800;
       font-size: 1.8rem;
@@ -246,6 +248,8 @@ async function suggestBrianAssignments() {
       from { transform: translateY(20px); opacity: 0; }
       to { transform: translateY(0); opacity: 1; }
 
+    }
+
     .travel-segment {
       margin: 12px 0;
       padding: 15px;
@@ -320,6 +324,8 @@ async function suggestBrianAssignments() {
     @keyframes spin {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
+
+    }
 
     /* Responsive design */
     @media (max-width: 768px) {
@@ -407,6 +413,8 @@ async function suggestBrianAssignments() {
       50% { transform: scale(1.1); }
       100% { transform: scale(1); }
   
+    }
+
 
 #conflictLog h3 {
   margin-top: 0;
@@ -465,6 +473,7 @@ async function suggestBrianAssignments() {
 <i class="fas fa-map-marked-alt">
 </i>
     Afsprakenkaart
+      <button onclick="suggestOptimaleRoutes()">Adviseer Routes</button>
    </div>
 <img alt="Voltsmart Logo" draggable="false" id="logo" src="https://cdn.prod.website-files.com/68503ddc6fb75a92cad47e2a/68515d53bc9b66440249398b_Logo%20(1).svg"/>
 <div id="counter">
@@ -641,6 +650,55 @@ async function suggestBrianAssignments() {
       
       return parsedDate;
 
+
+async function suggestOptimaleRoutes() {
+  const grouped = {};
+
+  if (!Array.isArray(afsprakenData)) {
+    alert("Afspraken zijn nog niet geladen.");
+    return;
+  }
+
+  // Groepeer per medewerker + datum
+  afsprakenData.forEach(a => {
+    const key = a.medewerker + "_" + a.datum;
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(a);
+  });
+
+  const berichten = [];
+
+  for (const [groep, afspraken] of Object.entries(grouped)) {
+    const [medewerker, datum] = groep.split("_");
+    afspraken.sort((a, b) => new Date(a.datum + ' ' + a.tijd) - new Date(b.datum + ' ' + b.tijd));
+
+    let vorige = null;
+    for (const afspraak of afspraken) {
+      if (vorige) {
+        const vertrek = new Date(vorige.datum + ' ' + vorige.tijd);
+        vertrek.setMinutes(vertrek.getMinutes() + 60); // vaste afspraakduur
+
+        const aankomst = new Date(afspraak.datum + ' ' + afspraak.tijd);
+        const marge = (aankomst - vertrek) / 60000;
+
+        if (marge < 0) {
+          const nieuwTijd = new Date(vertrek);
+          const hh = String(nieuwTijd.getHours()).padStart(2, '0');
+          const mm = String(nieuwTijd.getMinutes()).padStart(2, '0');
+          berichten.push(`${medewerker} op ${datum}: Verplaats afspraak bij ${afspraak.klantnaam} naar ${hh}:${mm}`);
+        }
+      }
+      vorige = afspraak;
+    }
+  }
+
+  if (berichten.length === 0) {
+    alert("Alle routes zijn haalbaar.");
+  } else {
+    alert("Optimalisatie-adviezen:\n" + berichten.join("\n"));
+  }
+}
+
     window.initMap = async function () {
         showLoading(true);
 
@@ -702,12 +760,12 @@ async function suggestBrianAssignments() {
             document.getElementById("searchInput").addEventListener("input",
                 debounce(handleSearch, 300)
             );
-
-            document.getElementById("showPastAppointments").addEventListener("change", () => {
-                updateMarkers();
-                updateCounter();
-            });
-
+        try {
+            showLoading(false);
+        } catch (error) {
+            console.error('Initialisatie fout:', error);
+            showError('Er is een fout opgetreden bij het laden van de applicatie. Controleer Google API key.');
+        }
         try {
             showLoading(false);
         } catch (error) {
@@ -747,8 +805,8 @@ async function suggestBrianAssignments() {
       setTimeout(() => {
         if (document.body.contains(errorDiv)) {
           document.body.removeChild(errorDiv);
+        }
       }, 5000);
-
     async function loadAfspraken() {
       showLoading(true);
       try {
@@ -976,6 +1034,8 @@ if (!datum || !medewerker || !klantnaam || !adres || !tijd || isNaN(lat) || isNa
                         70% { transform: scale(1.1); opacity: 0.7; }
                         100% { transform: scale(1); opacity: 1; }
                     circle {
+                    }
+
                         animation: svg-pulse 2s infinite;
                         transform-origin: center center;
                 </style>
@@ -1521,7 +1581,7 @@ async function laadAfspraken() {
         tijd: cols[5],
         lat: parseFloat(cols[8]),
         lon: parseFloat(cols[9])
-      };
+        lon: parseFloat(cols[9]),
     }).filter(a => a && !isNaN(a.lat) && !isNaN(a.lon));
 
     window.afspraken = afspraken;
@@ -1590,7 +1650,7 @@ function checkHaalbaarheid() {
   alleAfspraken.forEach(a => {
     if (!afsprakenPerDag[a.datum]) afsprakenPerDag[a.datum] = [];
     afsprakenPerDag[a.datum].push(a);
-  });
+  );
   </script>
 </body>
 </html>
