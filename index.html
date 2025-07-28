@@ -19,6 +19,50 @@
     }
     window.onload = loadGoogleMaps;
   
+const messages = [];
+  for (const afspraak of brianAfspraken) {
+    const best = await bestOperatorForAppointment(afspraak);
+    if (best && best.operator) {
+      afspraak.suggestedOperator = best.operator;
+      afspraak.suggestedDuration = best.duration;
+      const minutes = Math.round(best.duration / 60);
+      messages.push(`${afspraak.klantnaam} (${afspraak.tijd}) - beste keuze: ${best.operator} (${minutes} min rijden)`);
+    }
+  }
+
+  const groups = {};
+  brianAfspraken.forEach(a => {
+    if (!a.suggestedOperator) return;
+    const key = `${a.datum}_${a.suggestedOperator}`;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(a);
+  });
+
+  for (const list of Object.values(groups)) {
+    list.sort((a, b) => new Date(a.datum + ' ' + a.tijd) - new Date(b.datum + ' ' + b.tijd));
+    for (let i = 0; i < list.length - 1; i++) {
+      const a1 = list[i];
+      const a2 = list[i + 1];
+      const vertrek = new Date(a1.datum + ' ' + a1.tijd);
+      vertrek.setMinutes(vertrek.getMinutes() + 60);
+      const travelMin = await getTravelTimeMinutes({ lat: a1.lat, lng: a1.lon }, { lat: a2.lat, lng: a2.lon });
+      const aankomst = new Date(vertrek.getTime() + travelMin * 60000);
+      const geplande = new Date(a2.datum + ' ' + a2.tijd);
+      const diff = (aankomst - geplande) / 60000;
+      if (diff > 0) {
+        const adviesMin = Math.ceil(diff);
+        const hh = String(aankomst.getHours()).padStart(2, '0');
+        const mm = String(aankomst.getMinutes()).padStart(2, '0');
+        messages.push(`${a2.klantnaam}: verplaats afspraak naar ${hh}:${mm} (minimaal ${adviesMin} min later)`);
+      }
+    }
+  }
+
+  alert(messages.join('
+'));
+}
+
+
 async function suggestBrianAssignments() {
   const brianAfspraken = afsprakenData.filter(a => a.operators.map(o => o.toLowerCase()).includes('brian'));
   if (brianAfspraken.length === 0) {
@@ -557,6 +601,50 @@ async function suggestBrianAssignments() {
 }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js">
+const messages = [];
+  for (const afspraak of brianAfspraken) {
+    const best = await bestOperatorForAppointment(afspraak);
+    if (best && best.operator) {
+      afspraak.suggestedOperator = best.operator;
+      afspraak.suggestedDuration = best.duration;
+      const minutes = Math.round(best.duration / 60);
+      messages.push(`${afspraak.klantnaam} (${afspraak.tijd}) - beste keuze: ${best.operator} (${minutes} min rijden)`);
+    }
+  }
+
+  const groups = {};
+  brianAfspraken.forEach(a => {
+    if (!a.suggestedOperator) return;
+    const key = `${a.datum}_${a.suggestedOperator}`;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(a);
+  });
+
+  for (const list of Object.values(groups)) {
+    list.sort((a, b) => new Date(a.datum + ' ' + a.tijd) - new Date(b.datum + ' ' + b.tijd));
+    for (let i = 0; i < list.length - 1; i++) {
+      const a1 = list[i];
+      const a2 = list[i + 1];
+      const vertrek = new Date(a1.datum + ' ' + a1.tijd);
+      vertrek.setMinutes(vertrek.getMinutes() + 60);
+      const travelMin = await getTravelTimeMinutes({ lat: a1.lat, lng: a1.lon }, { lat: a2.lat, lng: a2.lon });
+      const aankomst = new Date(vertrek.getTime() + travelMin * 60000);
+      const geplande = new Date(a2.datum + ' ' + a2.tijd);
+      const diff = (aankomst - geplande) / 60000;
+      if (diff > 0) {
+        const adviesMin = Math.ceil(diff);
+        const hh = String(aankomst.getHours()).padStart(2, '0');
+        const mm = String(aankomst.getMinutes()).padStart(2, '0');
+        messages.push(`${a2.klantnaam}: verplaats afspraak naar ${hh}:${mm} (minimaal ${adviesMin} min later)`);
+      }
+    }
+  }
+
+  alert(messages.join('
+'));
+}
+
+
 async function suggestBrianAssignments() {
   const brianAfspraken = afsprakenData.filter(a => a.operators.map(o => o.toLowerCase()).includes('brian'));
   if (brianAfspraken.length === 0) {
@@ -1674,6 +1762,50 @@ if (!datum || !medewerker || !klantnaam || !adres || !tijd || isNaN(lat) || isNa
         }
     }
   
+const messages = [];
+  for (const afspraak of brianAfspraken) {
+    const best = await bestOperatorForAppointment(afspraak);
+    if (best && best.operator) {
+      afspraak.suggestedOperator = best.operator;
+      afspraak.suggestedDuration = best.duration;
+      const minutes = Math.round(best.duration / 60);
+      messages.push(`${afspraak.klantnaam} (${afspraak.tijd}) - beste keuze: ${best.operator} (${minutes} min rijden)`);
+    }
+  }
+
+  const groups = {};
+  brianAfspraken.forEach(a => {
+    if (!a.suggestedOperator) return;
+    const key = `${a.datum}_${a.suggestedOperator}`;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(a);
+  });
+
+  for (const list of Object.values(groups)) {
+    list.sort((a, b) => new Date(a.datum + ' ' + a.tijd) - new Date(b.datum + ' ' + b.tijd));
+    for (let i = 0; i < list.length - 1; i++) {
+      const a1 = list[i];
+      const a2 = list[i + 1];
+      const vertrek = new Date(a1.datum + ' ' + a1.tijd);
+      vertrek.setMinutes(vertrek.getMinutes() + 60);
+      const travelMin = await getTravelTimeMinutes({ lat: a1.lat, lng: a1.lon }, { lat: a2.lat, lng: a2.lon });
+      const aankomst = new Date(vertrek.getTime() + travelMin * 60000);
+      const geplande = new Date(a2.datum + ' ' + a2.tijd);
+      const diff = (aankomst - geplande) / 60000;
+      if (diff > 0) {
+        const adviesMin = Math.ceil(diff);
+        const hh = String(aankomst.getHours()).padStart(2, '0');
+        const mm = String(aankomst.getMinutes()).padStart(2, '0');
+        messages.push(`${a2.klantnaam}: verplaats afspraak naar ${hh}:${mm} (minimaal ${adviesMin} min later)`);
+      }
+    }
+  }
+
+  alert(messages.join('
+'));
+}
+
+
 async function suggestBrianAssignments() {
   const brianAfspraken = afsprakenData.filter(a => a.operators.map(o => o.toLowerCase()).includes('brian'));
   if (brianAfspraken.length === 0) {
@@ -1911,6 +2043,50 @@ function checkHaalbaarheid() {
     }
   });
 }
+
+const messages = [];
+  for (const afspraak of brianAfspraken) {
+    const best = await bestOperatorForAppointment(afspraak);
+    if (best && best.operator) {
+      afspraak.suggestedOperator = best.operator;
+      afspraak.suggestedDuration = best.duration;
+      const minutes = Math.round(best.duration / 60);
+      messages.push(`${afspraak.klantnaam} (${afspraak.tijd}) - beste keuze: ${best.operator} (${minutes} min rijden)`);
+    }
+  }
+
+  const groups = {};
+  brianAfspraken.forEach(a => {
+    if (!a.suggestedOperator) return;
+    const key = `${a.datum}_${a.suggestedOperator}`;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(a);
+  });
+
+  for (const list of Object.values(groups)) {
+    list.sort((a, b) => new Date(a.datum + ' ' + a.tijd) - new Date(b.datum + ' ' + b.tijd));
+    for (let i = 0; i < list.length - 1; i++) {
+      const a1 = list[i];
+      const a2 = list[i + 1];
+      const vertrek = new Date(a1.datum + ' ' + a1.tijd);
+      vertrek.setMinutes(vertrek.getMinutes() + 60);
+      const travelMin = await getTravelTimeMinutes({ lat: a1.lat, lng: a1.lon }, { lat: a2.lat, lng: a2.lon });
+      const aankomst = new Date(vertrek.getTime() + travelMin * 60000);
+      const geplande = new Date(a2.datum + ' ' + a2.tijd);
+      const diff = (aankomst - geplande) / 60000;
+      if (diff > 0) {
+        const adviesMin = Math.ceil(diff);
+        const hh = String(aankomst.getHours()).padStart(2, '0');
+        const mm = String(aankomst.getMinutes()).padStart(2, '0');
+        messages.push(`${a2.klantnaam}: verplaats afspraak naar ${hh}:${mm} (minimaal ${adviesMin} min later)`);
+      }
+    }
+  }
+
+  alert(messages.join('
+'));
+}
+
 
 async function suggestBrianAssignments() {
   const brianAfspraken = afsprakenData.filter(a => a.operators.map(o => o.toLowerCase()).includes('brian'));
