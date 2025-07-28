@@ -14,6 +14,7 @@
   if (brianAfspraken.length === 0) {
     alert('Geen Brian-afspraken gevonden.');
     return;
+  }
 
   const suggestions = brianAfspraken
     .map(a => `${a.datum} ${a.tijd} - ${a.adres ?? ''}`.trim())
