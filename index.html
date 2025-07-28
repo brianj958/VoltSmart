@@ -1,8 +1,9 @@
 <!DOCTYPE html>
+
 <html>
- <head>
-  <script>
-   async function suggestBrianAssignments() {
+<head>
+<script>
+async function suggestBrianAssignments() {
   const brianAfspraken = afsprakenData
     .filter(a => a.operators.map(o => o.toLowerCase()).includes('brian'))
     .sort((a, b) => {
@@ -22,15 +23,15 @@
 
   alert(`Brian suggesties:\n${suggestions}`);
 }
-  </script>
-  <title>
+</script>
+<title>
    Afsprakenkaart - Premium Edition
   </title>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-  <!-- Verbeterde Google Maps API loading -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"/>
-  <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<!-- Verbeterde Google Maps API loading -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"/>
+<style>
    * {
       box-sizing: border-box;
 
@@ -448,103 +449,103 @@
   border-bottom: 1px dashed #ccc;
   padding-bottom: 4px;
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js">
-  </script>
- </head>
- <body>
-  <div class="loading" id="loading">
-   <div class="spinner">
-   </div>
-   <div>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js">
+</script>
+</head>
+<body>
+<div class="loading" id="loading">
+<div class="spinner">
+</div>
+<div>
     Laden van afspraken...
    </div>
-  </div>
-  <div id="topbar">
-   <div id="title">
-    <i class="fas fa-map-marked-alt">
-    </i>
+</div>
+<div id="topbar">
+<div id="title">
+<i class="fas fa-map-marked-alt">
+</i>
     Afsprakenkaart
    </div>
-   <img alt="Voltsmart Logo" draggable="false" id="logo" src="https://cdn.prod.website-files.com/68503ddc6fb75a92cad47e2a/68515d53bc9b66440249398b_Logo%20(1).svg"/>
-   <div id="counter">
-    <div class="count-today">
-     <i class="fas fa-calendar-day">
-     </i>
+<img alt="Voltsmart Logo" draggable="false" id="logo" src="https://cdn.prod.website-files.com/68503ddc6fb75a92cad47e2a/68515d53bc9b66440249398b_Logo%20(1).svg"/>
+<div id="counter">
+<div class="count-today">
+<i class="fas fa-calendar-day">
+</i>
      Vandaag:
      <span id="count-today">
       0
      </span>
-    </div>
-    <div class="count-total">
-     <i class="fas fa-chart-bar">
-     </i>
+</div>
+<div class="count-total">
+<i class="fas fa-chart-bar">
+</i>
      Totaal:
      <span id="count-total">
       0
      </span>
-    </div>
-   </div>
-   <input id="searchInput" placeholder="🔍 Zoek adres of postcode" type="text"/>
-  </div>
-  <div id="controls">
-   <label for="datumSelect">
-    <i class="fas fa-calendar">
-    </i>
+</div>
+</div>
+<input id="searchInput" placeholder="🔍 Zoek adres of postcode" type="text"/>
+</div>
+<div id="controls">
+<label for="datumSelect">
+<i class="fas fa-calendar">
+</i>
     Datum:
    </label>
-   <select id="datumSelect">
-    <option value="">
+<select id="datumSelect">
+<option value="">
      -- Alles --
     </option>
-   </select>
-   <label for="operatorSelect">
-    <i class="fas fa-user">
-    </i>
+</select>
+<label for="operatorSelect">
+<i class="fas fa-user">
+</i>
     Operator:
    </label>
-   <select id="operatorSelect">
-    <option value="">
+<select id="operatorSelect">
+<option value="">
      -- Iedereen --
     </option>
-   </select>
-   <label>
-    <input checked="" id="showPastAppointments" type="checkbox"/>
+</select>
+<label>
+<input checked="" id="showPastAppointments" type="checkbox"/>
     Toon verleden afspraken
    </label>
-   <button id="clear-selection">
-    <i class="fas fa-trash">
-    </i>
+<button id="clear-selection">
+<i class="fas fa-trash">
+</i>
     Wis selectie
    </button>
-   <button id="advice-brian-btn" onclick="suggestBrianAssignments()">
+<button id="advice-brian-btn" onclick="suggestBrianAssignments()">
     Adviseer Brian
    </button>
-  </div>
-  <div id="toolbar" style="padding:10px; background:#f3f3f3; display:flex; gap:10px; align-items:center;">
-   <input id="zoekInput" placeholder="Zoek klant of adres..." style="flex:1; padding:6px;" type="text"/>
-   <select id="dagFilter" style="padding:6px;">
-    <option value="">
+</div>
+<div id="toolbar" style="padding:10px; background:#f3f3f3; display:flex; gap:10px; align-items:center;">
+<input id="zoekInput" placeholder="Zoek klant of adres..." style="flex:1; padding:6px;" type="text"/>
+<select id="dagFilter" style="padding:6px;">
+<option value="">
      Alle dagen
     </option>
-   </select>
-   <button onclick="wisSelectie()">
+</select>
+<button onclick="wisSelectie()">
     Wis selectie
    </button>
-  </div>
-  <div id="map">
-  </div>
-  <div id="travel-info">
-   <strong>
-    <i class="fas fa-route">
-    </i>
+</div>
+<div id="map">
+</div>
+<div id="travel-info">
+<strong>
+<i class="fas fa-route">
+</i>
     Reistijd tussen geselecteerde afspraken:
    </strong>
-   <div id="travel-details">
-   </div>
-  </div>
-  <div id="legend">
-  </div>
-  <script>
+<div id="travel-details">
+</div>
+</div>
+<div id="legend">
+</div>
+<script>
    // ZORG DAT DEZE URL CORRECT IS EN GEEN SPATIES BEVAT!
     const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv"; 
     const googleAPIKey = "AIzaSyDTvDRPKBT7KDONeDgekEXlN1_CMZUtX4U";
@@ -1490,7 +1491,7 @@ if (!datum || !medewerker || !klantnaam || !adres || !tijd || isNaN(lat) || isNa
         } finally {
             showLoading(false);
   </script>
-  <script>
+<script>
 
 async function laadAfspraken() {
   try {
@@ -1591,5 +1592,5 @@ function checkHaalbaarheid() {
     afsprakenPerDag[a.datum].push(a);
   });
   </script>
- </body>
+</body>
 </html>
