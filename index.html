@@ -20,6 +20,7 @@
     .join('\n');
 
   alert(`Brian suggesties:\n${suggestions}`);
+}
   </script>
   <title>
    Afsprakenkaart - Premium Edition
@@ -705,6 +706,7 @@
                 updateCounter();
             });
 
+        try {
             showLoading(false);
         } catch (error) {
             console.error('Initialisatie fout:', error);
