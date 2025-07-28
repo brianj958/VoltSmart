@@ -21,7 +21,7 @@
   
 const messages = [];
   for (const afspraak of brianAfspraken) {
-    const best = await bestOperatorForAppointment(afspraak);
+
     if (best && best.operator) {
       afspraak.suggestedOperator = best.operator;
       afspraak.suggestedDuration = best.duration;
@@ -72,7 +72,7 @@ async function suggestBrianAssignments() {
 
   const messages = [];
   for (const afspraak of brianAfspraken) {
-    const best = await bestOperatorForAppointment(afspraak);
+
     if (best && best.operator) {
       afspraak.suggestedOperator = best.operator;
       afspraak.suggestedDuration = best.duration;
@@ -603,7 +603,7 @@ async function suggestBrianAssignments() {
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js">
 const messages = [];
   for (const afspraak of brianAfspraken) {
-    const best = await bestOperatorForAppointment(afspraak);
+
     if (best && best.operator) {
       afspraak.suggestedOperator = best.operator;
       afspraak.suggestedDuration = best.duration;
@@ -654,7 +654,7 @@ async function suggestBrianAssignments() {
 
   const messages = [];
   for (const afspraak of brianAfspraken) {
-    const best = await bestOperatorForAppointment(afspraak);
+
     if (best && best.operator) {
       afspraak.suggestedOperator = best.operator;
       afspraak.suggestedDuration = best.duration;
@@ -1764,7 +1764,7 @@ if (!datum || !medewerker || !klantnaam || !adres || !tijd || isNaN(lat) || isNa
   
 const messages = [];
   for (const afspraak of brianAfspraken) {
-    const best = await bestOperatorForAppointment(afspraak);
+
     if (best && best.operator) {
       afspraak.suggestedOperator = best.operator;
       afspraak.suggestedDuration = best.duration;
@@ -1815,7 +1815,7 @@ async function suggestBrianAssignments() {
 
   const messages = [];
   for (const afspraak of brianAfspraken) {
-    const best = await bestOperatorForAppointment(afspraak);
+
     if (best && best.operator) {
       afspraak.suggestedOperator = best.operator;
       afspraak.suggestedDuration = best.duration;
@@ -1875,7 +1875,7 @@ async function laadAfspraken() {
 
     const afspraken = rows.map((cols, index) => {
       if (cols.length < 10 || !cols[2]  // klantnaam || !cols[8] || !cols[9]) {
-        console.warn(`Rij ${index + 2} overgeslagen: ontbrekende data of verkeerde structuur.`, cols);
+        console.warn("Rij " + (index + 2) + " overgeslagen: ontbrekende data of verkeerde structuur.", cols);
         return null;
       }
 
@@ -2046,7 +2046,7 @@ function checkHaalbaarheid() {
 
 const messages = [];
   for (const afspraak of brianAfspraken) {
-    const best = await bestOperatorForAppointment(afspraak);
+
     if (best && best.operator) {
       afspraak.suggestedOperator = best.operator;
       afspraak.suggestedDuration = best.duration;
@@ -2097,7 +2097,7 @@ async function suggestBrianAssignments() {
 
   const messages = [];
   for (const afspraak of brianAfspraken) {
-    const best = await bestOperatorForAppointment(afspraak);
+
     if (best && best.operator) {
       afspraak.suggestedOperator = best.operator;
       afspraak.suggestedDuration = best.duration;
