@@ -473,7 +473,6 @@ async function suggestBrianAssignments() {
 <i class="fas fa-map-marked-alt">
 </i>
     Afsprakenkaart
-      <button onclick="suggestOptimaleRoutes()">Adviseer Routes</button>
    </div>
 <img alt="Voltsmart Logo" draggable="false" id="logo" src="https://cdn.prod.website-files.com/68503ddc6fb75a92cad47e2a/68515d53bc9b66440249398b_Logo%20(1).svg"/>
 <div id="counter">
@@ -574,6 +573,7 @@ async function suggestBrianAssignments() {
     };
 
     let map;
+let directionsService = new google.maps.DirectionsService();
     let allMarkers = [];
     let afsprakenData = [];
     let selectedMarkers = [];
@@ -649,55 +649,6 @@ async function suggestBrianAssignments() {
         throw new Error('Ongeldige datum/tijd combinatie');
       
       return parsedDate;
-
-
-async function suggestOptimaleRoutes() {
-  const grouped = {};
-
-  if (!Array.isArray(afsprakenData)) {
-    alert("Afspraken zijn nog niet geladen.");
-    return;
-  }
-
-  // Groepeer per medewerker + datum
-  afsprakenData.forEach(a => {
-    const key = a.medewerker + "_" + a.datum;
-    if (!grouped[key]) grouped[key] = [];
-    grouped[key].push(a);
-  });
-
-  const berichten = [];
-
-  for (const [groep, afspraken] of Object.entries(grouped)) {
-    const [medewerker, datum] = groep.split("_");
-    afspraken.sort((a, b) => new Date(a.datum + ' ' + a.tijd) - new Date(b.datum + ' ' + b.tijd));
-
-    let vorige = null;
-    for (const afspraak of afspraken) {
-      if (vorige) {
-        const vertrek = new Date(vorige.datum + ' ' + vorige.tijd);
-        vertrek.setMinutes(vertrek.getMinutes() + 60); // vaste afspraakduur
-
-        const aankomst = new Date(afspraak.datum + ' ' + afspraak.tijd);
-        const marge = (aankomst - vertrek) / 60000;
-
-        if (marge < 0) {
-          const nieuwTijd = new Date(vertrek);
-          const hh = String(nieuwTijd.getHours()).padStart(2, '0');
-          const mm = String(nieuwTijd.getMinutes()).padStart(2, '0');
-          berichten.push(`${medewerker} op ${datum}: Verplaats afspraak bij ${afspraak.klantnaam} naar ${hh}:${mm}`);
-        }
-      }
-      vorige = afspraak;
-    }
-  }
-
-  if (berichten.length === 0) {
-    alert("Alle routes zijn haalbaar.");
-  } else {
-    alert("Optimalisatie-adviezen:\n" + berichten.join("\n"));
-  }
-}
 
     window.initMap = async function () {
         showLoading(true);
@@ -921,12 +872,13 @@ if (!datum || !medewerker || !klantnaam || !adres || !tijd || isNaN(lat) || isNa
       const duration = 500;
       const steps = Math.abs(targetValue - currentValue);
 
-      if (steps === 0) {
+      try {
         element.textContent = targetValue;
         return;
 
       const stepTime = duration / steps;
       let current = currentValue;
+      }
 
       const timer = setInterval(() => {
         current += increment;
@@ -1636,7 +1588,6 @@ function vulDagFilter() {
 
 function wisSelectie() {
   alleMarkers.forEach(m => m.setMap(null));
-  if (routePolyline) routePolyline.setMap(null);
   document.getElementById("logList").innerHTML = "";
 
 let directionsService = new google.maps.DirectionsService();
