@@ -37,7 +37,6 @@ async function suggestBrianAssignments() {
 
   alert("Brian suggesties:\n" + suggestions);
 }
-' + suggestions);
 }
 
 
@@ -1720,7 +1719,13 @@ let directionsService = new google.maps.DirectionsService();
 
 function checkHaalbaarheid() {
   document.getElementById("logList").innerHTML = "";
+  const alleAfspraken = window.afspraken || [];
   const afsprakenPerDag = {}
+  alleAfspraken.forEach(a => {
+    if (!afsprakenPerDag[a.datum]) afsprakenPerDag[a.datum] = [];
+    afsprakenPerDag[a.datum].push(a);
+  });
+}
 </script>
 </body>
 </html>
