@@ -33,7 +33,7 @@ async function suggestBrianAssignments() {
 
   const suggestions = brianAfspraken
     .map(a => `${a.datum} ${a.tijd} - ${a.adres ?? ''}`.trim())
-    .join('
+    .join("\n")
 ');
 
   alert('Brian suggesties:
