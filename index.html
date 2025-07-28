@@ -30,7 +30,7 @@ async function suggestBrianAssignments() {
       afspraak.suggestedOperator = best.operator;
       afspraak.suggestedDuration = best.duration;
       const minutes = Math.round(best.duration / 60);
-      messages.push(`${afspraak.klantnaam} (${afspraak.tijd}) - beste keuze: ${best.operator} (${minutes} min rijden)`);
+      messages.push(afspraak.klantnaam + " (" + afspraak.tijd + ") - beste keuze: " + best.operator + " (" + minutes + " min rijden)");
     }
   }
 
@@ -57,7 +57,7 @@ async function suggestBrianAssignments() {
         const adviesMin = Math.ceil(diff);
         const hh = String(aankomst.getHours()).padStart(2, '0');
         const mm = String(aankomst.getMinutes()).padStart(2, '0');
-        messages.push(`${a2.klantnaam}: verplaats afspraak naar ${hh}:${mm} (minimaal ${adviesMin} min later)`);
+        messages.push(a2.klantnaam + ": verplaats afspraak naar " + hh + ":" + mm + " (minimaal " + adviesMin + " min later)");
       }
     }
   }
@@ -567,7 +567,7 @@ const messages = [];
       afspraak.suggestedOperator = best.operator;
       afspraak.suggestedDuration = best.duration;
       const minutes = Math.round(best.duration / 60);
-      messages.push(`${afspraak.klantnaam} (${afspraak.tijd}) - beste keuze: ${best.operator} (${minutes} min rijden)`);
+      messages.push(afspraak.klantnaam + " (" + afspraak.tijd + ") - beste keuze: " + best.operator + " (" + minutes + " min rijden)");
     }
   }
 
@@ -593,7 +593,7 @@ const messages = [];
         const adviesMin = Math.ceil(diff);
         const hh = String(aankomst.getHours()).padStart(2, '0');
         const mm = String(aankomst.getMinutes()).padStart(2, '0');
-        messages.push(`${a2.klantnaam}: verplaats afspraak naar ${hh}:${mm} (minimaal ${adviesMin} min later)`);
+        messages.push(a2.klantnaam + ": verplaats afspraak naar " + hh + ":" + mm + " (minimaal " + adviesMin + " min later)");
       }
     }
   }
@@ -610,7 +610,7 @@ const messages = [];
       afspraak.suggestedOperator = best.operator;
       afspraak.suggestedDuration = best.duration;
       const minutes = Math.round(best.duration / 60);
-      messages.push(`${afspraak.klantnaam} (${afspraak.tijd}) - beste keuze: ${best.operator} (${minutes} min rijden)`);
+      messages.push(afspraak.klantnaam + " (" + afspraak.tijd + ") - beste keuze: " + best.operator + " (" + minutes + " min rijden)");
     }
   }
 
@@ -636,7 +636,7 @@ const messages = [];
         const adviesMin = Math.ceil(diff);
         const hh = String(aankomst.getHours()).padStart(2, '0');
         const mm = String(aankomst.getMinutes()).padStart(2, '0');
-        messages.push(`${a2.klantnaam}: verplaats afspraak naar ${hh}:${mm} (minimaal ${adviesMin} min later)`);
+        messages.push(a2.klantnaam + ": verplaats afspraak naar " + hh + ":" + mm + " (minimaal " + adviesMin + " min later)");
       }
     }
   }
@@ -1719,7 +1719,7 @@ const messages = [];
       afspraak.suggestedOperator = best.operator;
       afspraak.suggestedDuration = best.duration;
       const minutes = Math.round(best.duration / 60);
-      messages.push(`${afspraak.klantnaam} (${afspraak.tijd}) - beste keuze: ${best.operator} (${minutes} min rijden)`);
+      messages.push(afspraak.klantnaam + " (" + afspraak.tijd + ") - beste keuze: " + best.operator + " (" + minutes + " min rijden)");
     }
   }
 
@@ -1745,7 +1745,7 @@ const messages = [];
         const adviesMin = Math.ceil(diff);
         const hh = String(aankomst.getHours()).padStart(2, '0');
         const mm = String(aankomst.getMinutes()).padStart(2, '0');
-        messages.push(`${a2.klantnaam}: verplaats afspraak naar ${hh}:${mm} (minimaal ${adviesMin} min later)`);
+        messages.push(a2.klantnaam + ": verplaats afspraak naar " + hh + ":" + mm + " (minimaal " + adviesMin + " min later)");
       }
     }
   }
@@ -1762,7 +1762,7 @@ const messages = [];
       afspraak.suggestedOperator = best.operator;
       afspraak.suggestedDuration = best.duration;
       const minutes = Math.round(best.duration / 60);
-      messages.push(`${afspraak.klantnaam} (${afspraak.tijd}) - beste keuze: ${best.operator} (${minutes} min rijden)`);
+      messages.push(afspraak.klantnaam + " (" + afspraak.tijd + ") - beste keuze: " + best.operator + " (" + minutes + " min rijden)");
     }
   }
 
@@ -1788,7 +1788,7 @@ const messages = [];
         const adviesMin = Math.ceil(diff);
         const hh = String(aankomst.getHours()).padStart(2, '0');
         const mm = String(aankomst.getMinutes()).padStart(2, '0');
-        messages.push(`${a2.klantnaam}: verplaats afspraak naar ${hh}:${mm} (minimaal ${adviesMin} min later)`);
+        messages.push(a2.klantnaam + ": verplaats afspraak naar " + hh + ":" + mm + " (minimaal " + adviesMin + " min later)");
       }
     }
   }
@@ -1992,7 +1992,7 @@ const messages = [];
       afspraak.suggestedOperator = best.operator;
       afspraak.suggestedDuration = best.duration;
       const minutes = Math.round(best.duration / 60);
-      messages.push(`${afspraak.klantnaam} (${afspraak.tijd}) - beste keuze: ${best.operator} (${minutes} min rijden)`);
+      messages.push(afspraak.klantnaam + " (" + afspraak.tijd + ") - beste keuze: " + best.operator + " (" + minutes + " min rijden)");
     }
   }
 
@@ -2018,7 +2018,7 @@ const messages = [];
         const adviesMin = Math.ceil(diff);
         const hh = String(aankomst.getHours()).padStart(2, '0');
         const mm = String(aankomst.getMinutes()).padStart(2, '0');
-        messages.push(`${a2.klantnaam}: verplaats afspraak naar ${hh}:${mm} (minimaal ${adviesMin} min later)`);
+        messages.push(a2.klantnaam + ": verplaats afspraak naar " + hh + ":" + mm + " (minimaal " + adviesMin + " min later)");
       }
     }
   }
@@ -2035,7 +2035,7 @@ const messages = [];
       afspraak.suggestedOperator = best.operator;
       afspraak.suggestedDuration = best.duration;
       const minutes = Math.round(best.duration / 60);
-      messages.push(`${afspraak.klantnaam} (${afspraak.tijd}) - beste keuze: ${best.operator} (${minutes} min rijden)`);
+      messages.push(afspraak.klantnaam + " (" + afspraak.tijd + ") - beste keuze: " + best.operator + " (" + minutes + " min rijden)");
     }
   }
 
@@ -2061,7 +2061,7 @@ const messages = [];
         const adviesMin = Math.ceil(diff);
         const hh = String(aankomst.getHours()).padStart(2, '0');
         const mm = String(aankomst.getMinutes()).padStart(2, '0');
-        messages.push(`${a2.klantnaam}: verplaats afspraak naar ${hh}:${mm} (minimaal ${adviesMin} min later)`);
+        messages.push(a2.klantnaam + ": verplaats afspraak naar " + hh + ":" + mm + " (minimaal " + adviesMin + " min later)");
       }
     }
   }
