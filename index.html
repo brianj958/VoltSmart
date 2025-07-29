@@ -8,40 +8,40 @@
     html, body { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; background: linear-gradient(180deg, #0a1a2f, #1b2e4a); color: white; }
     #map { height: 100vh; width: 100vw; z-index: 1; position: absolute; top: 0; left: 0; }
     #sidebar {
-      position: absolute; top: 0; left: 0; width: 340px; height: 100vh;
+      position: absolute; top: 0; left: 0; width: 360px; height: 100vh;
       background: rgba(10, 20, 40, 0.97); padding: 20px 18px 12px 18px;
       box-sizing: border-box; overflow-y: auto; z-index: 999;
       box-shadow: 2px 0 8px rgba(0,0,0,0.23);
     }
-    #logo { text-align: center; margin-bottom: 20px; }
-    #logo img { max-width: 170px; }
-    h2 { font-size: 19px; margin-bottom: 10px; color: #ffd700; }
+    #logo { text-align: center; margin-bottom: 18px; }
+    #logo img { max-width: 190px; }
+    h2 { font-size: 20px; margin-bottom: 10px; color: #ffd700; }
     label, select, button { display: block; width: 100%; margin-top: 10px; }
     select, button {
-      padding: 6px; border-radius: 6px; border: none;
+      padding: 7px; border-radius: 6px; border: none;
     }
     button {
       background: #ffd700; color: #0a1a2f; font-weight: bold; cursor: pointer; margin-top: 18px;
     }
     #adviceBox {
-      position: absolute; bottom: 10px; right: 10px; width: 340px; max-height: 44%;
+      position: absolute; bottom: 10px; right: 10px; width: 370px; max-height: 48%;
       overflow-y: auto; background: rgba(0,0,0,0.88); color: white;
-      padding: 14px; border-radius: 11px; z-index: 999; font-size: 16px;
-      box-shadow: 0 0 18px 0 rgba(32,34,72,0.17);
+      padding: 15px; border-radius: 13px; z-index: 999; font-size: 16px;
+      box-shadow: 0 0 18px 0 rgba(32,34,72,0.16);
     }
     .marker-selected { filter: drop-shadow(0 0 10px #ffd700); }
     .conflict { color: #ff5252; font-weight: bold; }
     .saving { color: #4caf50; font-weight: bold; }
-    .route-step { margin-bottom: 6px; }
+    .route-step { margin-bottom: 7px; }
     .flex { display: flex; align-items: center; }
     .region { font-size:13px; color: #72e1ff; margin-left: 6px;}
+    .checkbox-row { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
   </style>
 </head>
 <body>
   <div id="sidebar">
     <div id="logo">
-      <!-- Vervang deze afbeelding eventueel door je eigen Voltsmart-logo -->
-      <img src="https://via.placeholder.com/170x48.png?text=Voltsmart" alt="Voltsmart Logo">
+      <img src="ChatGPT Image 23 jul 2025, 20_18_11 (1).png" alt="Voltsmart Logo">
     </div>
     <h2>Afspraken & Instellingen</h2>
     <label for="date-filter">Datum:</label>
@@ -55,6 +55,9 @@
     <label>Keith (🟡): <select id="duration-keith"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></label>
     <label>Gio (👑): <select id="duration-gio"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></label>
 
+    <h2>Beschikbaarheid medewerkers</h2>
+    <div id="availability"></div>
+
     <button onclick="resetSelection()">🔄 Reset selectie</button>
     <button onclick="planRoute()">🚗 Bereken route & advies</button>
   </div>
@@ -65,7 +68,7 @@
   </div>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDTvDRPKBT7KDONeDgekEXlN1_CMZUtX4U&callback=initMap" async defer></script>
 <script>
-/* ------------ CONFIG & HELPERS ------------ */
+/* ------------- CONFIG & HELPERS ------------- */
 const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv";
 const OPERATOR_EMOJI = { Roelof: "👨‍🌾", Jesse: "🚀", Chanice: "✨", Karlijn: "🌸", Keith: "🟡", Gio: "👑" };
 const OPERATOR_REGION = {
@@ -75,24 +78,35 @@ const OPERATOR_REGION = {
   Karlijn: "Groningen",
   Jesse: "Noord-Holland (flexibel)"
 };
+// Medewerker-adressen voor startpunt
+const OPERATOR_HOME_ADDRESS = {
+  Roelof: "Hemelrijk 9, Puiflijk",
+  Chanice: "Harddraverstraat 32A, 3033 XL Rotterdam",
+  Gio: "Savelsbos 304, 2716 HR Zoetermeer",
+  Karlijn: "Spitael 92, 9202 HG Drachten",
+  Jesse: "Kalf 406, 1509 BE Zaandam"
+};
 const KM_COST = 0.21, TIME_COST = 35; // € per km / per uur
 
 let map, directionsService, directionsRenderer;
 let appointments = [], markers = [], selectedMarkers = [], filteredAppointments = [];
+let medewerkerBeschikbaar = {
+  Roelof: true, Jesse: true, Chanice: true, Karlijn: true, Keith: true, Gio: true
+};
+let geocodedHomes = {}; // Voor geocoded home coordinates
 
 /* ------------ INIT ------------ */
 function initMap() {
   map = new google.maps.Map(document.getElementById("map"), {
     center: { lat: 52.1, lng: 5.1 },
     zoom: 7,
-    mapTypeId: "roadmap" // Heldere, standaard Google Maps
-    // Geen custom styles
+    mapTypeId: "roadmap"
   });
   directionsService = new google.maps.DirectionsService();
   directionsRenderer = new google.maps.DirectionsRenderer({ map: map, suppressMarkers: true });
   fetchAppointments();
+  renderBeschikbaarheidsCheckboxen();
 }
-
 
 /* ------------ DATA LAAD EN MARKERS ------------ */
 function fetchAppointments() {
@@ -118,7 +132,7 @@ function fillDateFilter() {
   sel.innerHTML = "";
   const dates = [...new Set(appointments.map(a => a.datum))]
     .filter(d => d)
-    .sort((a, b) => new Date(a) - new Date(b)); // Chronologisch oplopend sorteren
+    .sort((a, b) => new Date(a) - new Date(b));
   dates.forEach(date => {
     sel.innerHTML += `<option value="${date}">${date}</option>`;
   });
@@ -128,6 +142,7 @@ function fillDateFilter() {
   sel.value = firstFuture;
   sel.onchange = () => showMarkersForDate(sel.value);
 }
+
 function getSelectedDate() {
   return document.getElementById("date-filter").value;
 }
@@ -181,110 +196,116 @@ function resetSelection() {
   document.getElementById("adviceBox").innerHTML = "<strong>Klik minimaal twee afspraken op de kaart, klik daarna op 'Bereken route & advies'.</strong>";
 }
 
+/* ------------ BESCHIKBAARHEID CHECKBOXEN ------------ */
+function renderBeschikbaarheidsCheckboxen() {
+  const div = document.getElementById("availability");
+  div.innerHTML = "";
+  Object.keys(OPERATOR_HOME_ADDRESS).forEach(naam => {
+    div.innerHTML += `
+      <div class="checkbox-row">
+        <input type="checkbox" id="chk_${naam}" checked onchange="toggleBeschikbaarheid('${naam}')"/>
+        <label for="chk_${naam}">${naam} (${OPERATOR_EMOJI[naam] || ""})</label>
+      </div>`;
+  });
+}
+function toggleBeschikbaarheid(naam) {
+  medewerkerBeschikbaar[naam] = document.getElementById("chk_" + naam).checked;
+}
+
 /* ------------ ROUTE EN ADVIES ------------ */
 function planRoute() {
-  if (selectedMarkers.length < 2) {
-    alert("Selecteer minimaal twee afspraken op de kaart.");
-    return;
-  }
-  // Sorteer markers op tijd
-  selectedMarkers.sort((a, b) => a.metadata.tijd.localeCompare(b.metadata.tijd));
-  const waypoints = selectedMarkers.slice(1, -1).map(m => ({
-    location: m.getPosition(), stopover: true
-  }));
-  directionsService.route({
-    origin: selectedMarkers[0].getPosition(),
-    destination: selectedMarkers[selectedMarkers.length - 1].getPosition(),
-    waypoints,
-    travelMode: google.maps.TravelMode.DRIVING,
-    drivingOptions: { departureTime: new Date(), trafficModel: "bestguess" },
-    optimizeWaypoints: false
-  }, (result, status) => {
-    if (status !== "OK" || !result.routes.length) {
-      document.getElementById("adviceBox").innerHTML = "<span class='conflict'>Geen geldige route gevonden!</span>";
-      return;
+  // Werkelijk per medewerker routes & advies berekenen!
+  adviseerBesteMedewerkerPerRoute();
+}
+
+/* ------------ ADVIES MET GOOGLE DIRECTIONS API ------------ */
+async function adviseerBesteMedewerkerPerRoute() {
+  document.getElementById("adviceBox").innerHTML = "<b>Route-advies per medewerker wordt berekend...</b>";
+  // Haal geselecteerde datum op
+  const date = getSelectedDate();
+  // Verzamel afspraken per medewerker voor deze dag
+  let advies = "<b>Advies per medewerker:</b><ul style='padding-left:16px'>";
+  // Eerst alle home-adressen geocoderen (indien nodig)
+  await geocodeAllHomes();
+
+  for (let naam in OPERATOR_HOME_ADDRESS) {
+    if (!medewerkerBeschikbaar[naam]) {
+      advies += `<li>${OPERATOR_EMOJI[naam] || naam} <b>${naam}</b>: <span class='conflict'>Niet beschikbaar</span></li>`;
+      continue;
     }
-    directionsRenderer.setDirections(result);
-    checkRouteFeasibility(result);
+    const afspraken = appointments.filter(a => a.datum === date && a.medewerker === naam);
+    if (!afspraken.length) {
+      advies += `<li>${OPERATOR_EMOJI[naam] || naam} <b>${naam}</b>: <span class='conflict'>Geen route (geen afspraken)</span></li>`;
+      continue;
+    }
+    // Sorteer afspraken op tijd
+    afspraken.sort((a, b) => a.tijd.localeCompare(b.tijd));
+    const points = [geocodedHomes[naam], ...afspraken.map(a => ({ lat: a.lat, lng: a.lon }))];
+
+    // Bereken route via Directions API
+    let totaalAfstand = 0, totaalTijd = 0;
+    let result;
+    try {
+      result = await directionsPromise(points);
+    } catch (e) {
+      advies += `<li>${OPERATOR_EMOJI[naam] || naam} <b>${naam}</b>: <span class='conflict'>Route fout (${e.message})</span></li>`;
+      continue;
+    }
+    if (result && result.routes.length) {
+      const legs = result.routes[0].legs;
+      legs.forEach(leg => {
+        totaalAfstand += (leg.distance.value || 0)/1000;
+        totaalTijd += (leg.duration_in_traffic ? leg.duration_in_traffic.value : leg.duration.value)/60;
+      });
+      const besparing = Math.round((totaalAfstand * KM_COST) + (totaalTijd/60 * TIME_COST));
+      advies += `<li>${OPERATOR_EMOJI[naam] || naam} <b>${naam}</b>: ${afspraken.length} afspraken, <span class="saving">±${totaalAfstand.toFixed(1)} km, ${Math.round(totaalTijd)} min, indicatief €${besparing}</span></li>`;
+    } else {
+      advies += `<li>${OPERATOR_EMOJI[naam] || naam} <b>${naam}</b>: <span class='conflict'>Geen route gevonden</span></li>`;
+    }
+  }
+  advies += "</ul>";
+  document.getElementById("adviceBox").innerHTML = advies;
+}
+
+/* ------------ HULPFUNCTIES ------------ */
+function directionsPromise(points) {
+  return new Promise((resolve, reject) => {
+    if (points.length < 2) return reject(new Error("Te weinig punten voor route"));
+    const origin = points[0];
+    const destination = points[points.length-1];
+    const waypoints = points.slice(1, -1).map(p => ({ location: p, stopover: true }));
+    directionsService.route({
+      origin, destination, waypoints,
+      travelMode: google.maps.TravelMode.DRIVING,
+      drivingOptions: { departureTime: new Date(), trafficModel: "bestguess" }
+    }, (result, status) => {
+      if (status === "OK") resolve(result);
+      else reject(new Error(status));
+    });
   });
 }
 
-/* ------------ HAALBAARHEIDSCONTROLE EN ADVIES ------------ */
-function checkRouteFeasibility(routeResult) {
-  // Afspraakduurtijden uit dropdowns
-  const durations = {
-    Roelof: +document.getElementById("duration-roelof").value,
-    Jesse: +document.getElementById("duration-jesse").value,
-    Chanice: +document.getElementById("duration-chanice").value,
-    Karlijn: +document.getElementById("duration-karlijn").value,
-    Keith: +document.getElementById("duration-keith").value,
-    Gio: +document.getElementById("duration-gio").value
-  };
-  // Details uit directions API
-  const legs = routeResult.routes[0].legs;
-  let adviesHTML = "<div><b>Route-advies:</b><br><ul style='padding-left: 17px;'>";
-  let haalbaar = true, totalDistance = 0, totalTime = 0;
-  let prevEnd = null, prevTime = null, conflictIdx = null;
-  selectedMarkers.forEach(m => m.setIcon(null)); // Reset icons
-
-  for (let i = 0; i < legs.length; i++) {
-    const appt = selectedMarkers[i].metadata;
-    const leg = legs[i];
-    const duration = durations[appt.medewerker] || 60;
-    let geplandeTijd = appt.tijd;
-    let vertrekTijd = prevEnd ? prevEnd : geplandeTijd;
-    let reistijdMin = Math.round(leg.duration_in_traffic.value / 60);
-    let aankomstTijd = addMinutes(vertrekTijd, reistijdMin);
-    let vertrekNaAfspraak = addMinutes(aankomstTijd, duration);
-    prevEnd = vertrekNaAfspraak;
-    totalDistance += leg.distance.value / 1000;
-    totalTime += reistijdMin + duration;
-
-    adviesHTML += `<li class='route-step'>${OPERATOR_EMOJI[appt.medewerker] || "📍"} <b>${appt.klant}</b>
-    <span class="region">${OPERATOR_REGION[appt.medewerker] || ""}</span>
-    <br>
-    Gepland: <b>${geplandeTijd}</b>, Verwacht: <b>${aankomstTijd}</b> <br>
-    Reistijd: ${reistijdMin} min, Afspraakduur: ${duration} min`;
-
-    // Controleer haalbaarheid
-    if (toMinutes(aankomstTijd) > toMinutes(geplandeTijd) + 5) {
-      haalbaar = false; conflictIdx = i;
-      selectedMarkers[i].setIcon({
-        url: "http://maps.google.com/mapfiles/ms/icons/red-dot.png"
-      });
-      adviesHTML += `<br><span class='conflict'>Te laat! Advies: verzet deze afspraak naar ${aankomstTijd}</span>`;
-      break; // Stop bij eerste conflict
+// Geocode home-adressen naar lat/lon
+async function geocodeAllHomes() {
+  for (let naam in OPERATOR_HOME_ADDRESS) {
+    if (!geocodedHomes[naam]) {
+      const coords = await geocodeAddress(OPERATOR_HOME_ADDRESS[naam]);
+      geocodedHomes[naam] = coords;
     }
-    adviesHTML += "</li>";
   }
-  adviesHTML += "</ul>";
-
-  // Kostenbesparing (voorbeeld, kan uitgebreider)
-  const besparing = Math.round((totalDistance * KM_COST) + (totalTime/60 * TIME_COST));
-  adviesHTML += `<div class="saving">Totale afstand: ${totalDistance.toFixed(1)} km | Reistijd + afspraken: ${totalTime} min<br>
-  Indicatieve kosten: €${besparing}</div>`;
-
-  if (!haalbaar) {
-    adviesHTML += `<div class='conflict'><b>Let op:</b> Route niet haalbaar, zie rode marker(s)!</div>`;
-  } else {
-    adviesHTML += `<div class='saving'><b>Route is haalbaar en optimaal!</b></div>`;
-  }
-  adviesHTML += "</div>";
-  document.getElementById("adviceBox").innerHTML = adviesHTML;
 }
-
-/* ------------ TIME HELPERS ------------ */
-function toMinutes(timeStr) {
-  if (!timeStr) return 0;
-  const [h, m] = timeStr.split(":").map(Number);
-  return h * 60 + m;
-}
-function addMinutes(timeStr, mins) {
-  if (!timeStr) return "";
-  let [h, m] = timeStr.split(":").map(Number);
-  m += mins;
-  h += Math.floor(m/60); m = m % 60;
-  return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+function geocodeAddress(address) {
+  return new Promise((resolve, reject) => {
+    const gc = new google.maps.Geocoder();
+    gc.geocode({ address }, (results, status) => {
+      if (status === "OK" && results[0]) {
+        const loc = results[0].geometry.location;
+        resolve({ lat: loc.lat(), lng: loc.lng() });
+      } else {
+        resolve({ lat: 52.1, lng: 5.1 }); // fallback Nederland
+      }
+    });
+  });
 }
 </script>
 </body>
