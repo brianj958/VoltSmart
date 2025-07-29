@@ -83,13 +83,16 @@ let appointments = [], markers = [], selectedMarkers = [], filteredAppointments 
 /* ------------ INIT ------------ */
 function initMap() {
   map = new google.maps.Map(document.getElementById("map"), {
-    center: { lat: 52.1, lng: 5.1 }, zoom: 7,
-    styles: [{ elementType: "geometry", stylers: [{ color: "#192e49" }] }]
+    center: { lat: 52.1, lng: 5.1 },
+    zoom: 7,
+    mapTypeId: "roadmap" // Heldere, standaard Google Maps
+    // Geen custom styles
   });
   directionsService = new google.maps.DirectionsService();
   directionsRenderer = new google.maps.DirectionsRenderer({ map: map, suppressMarkers: true });
   fetchAppointments();
 }
+
 
 /* ------------ DATA LAAD EN MARKERS ------------ */
 function fetchAppointments() {
@@ -113,7 +116,9 @@ function fetchAppointments() {
 function fillDateFilter() {
   const sel = document.getElementById("date-filter");
   sel.innerHTML = "";
-  const dates = [...new Set(appointments.map(a => a.datum))].filter(d => d).sort();
+  const dates = [...new Set(appointments.map(a => a.datum))]
+    .filter(d => d)
+    .sort((a, b) => new Date(a) - new Date(b)); // Chronologisch oplopend sorteren
   dates.forEach(date => {
     sel.innerHTML += `<option value="${date}">${date}</option>`;
   });
@@ -123,7 +128,6 @@ function fillDateFilter() {
   sel.value = firstFuture;
   sel.onchange = () => showMarkersForDate(sel.value);
 }
-
 function getSelectedDate() {
   return document.getElementById("date-filter").value;
 }
