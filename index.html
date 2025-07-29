@@ -95,6 +95,35 @@ let medewerkerBeschikbaar = {
 };
 let geocodedHomes = {}; // Voor geocoded home coordinates
 
+function parseDateString(str) {
+  if (!str) return new Date(NaN);
+  const iso = Date.parse(str);
+  if (!isNaN(iso)) return new Date(iso);
+  const parts = str.split(/[\/-]/);
+  if (parts.length === 3) {
+    const [d, m, y] = parts.map(p => parseInt(p, 10));
+    const year = y < 100 ? 2000 + y : y;
+    return new Date(year, m - 1, d);
+  }
+  return new Date(str);
+}
+
+function parseTime(str) {
+  const [h, m] = str.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function formatTime(min) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
+}
+
+function getDurationForOperator(name) {
+  const el = document.getElementById("duration-" + name.toLowerCase());
+  return el ? parseInt(el.value, 10) : 60;
+}
+
 /* ------------ INIT ------------ */
 function initMap() {
   map = new google.maps.Map(document.getElementById("map"), {
@@ -132,7 +161,7 @@ function fillDateFilter() {
   sel.innerHTML = "";
   const dates = [...new Set(appointments.map(a => a.datum))]
     .filter(d => d)
-    .sort((a, b) => new Date(a) - new Date(b));
+    .sort((a, b) => parseDateString(a) - parseDateString(b));
   dates.forEach(date => {
     sel.innerHTML += `<option value="${date}">${date}</option>`;
   });
@@ -153,23 +182,27 @@ function showMarkersForDate(date) {
   markers.forEach(m => m.setMap(null));
   markers = []; selectedMarkers = [];
   filteredAppointments = appointments.filter(a => a.datum === date);
-  if (!filteredAppointments.length) return;
-  filteredAppointments.forEach((a, idx) => {
-    const marker = new google.maps.Marker({
-      position: { lat: a.lat, lng: a.lon },
-      map,
-      title: `${a.medewerker} – ${a.klant} (${a.tijd})`,
-      label: { text: OPERATOR_EMOJI[a.medewerker] || "📍", fontSize: "20px" }
+  if (filteredAppointments.length) {
+    filteredAppointments.forEach(a => {
+      const marker = new google.maps.Marker({
+        position: { lat: a.lat, lng: a.lon },
+        map,
+        title: `${a.medewerker} – ${a.klant} (${a.tijd})`,
+        label: { text: OPERATOR_EMOJI[a.medewerker] || "📍", fontSize: "20px" }
+      });
+      marker.metadata = a;
+      marker.addListener("click", () => toggleSelect(marker));
+      markers.push(marker);
     });
-    marker.metadata = a;
-    marker.addListener("click", () => toggleSelect(marker));
-    markers.push(marker);
-  });
-  // Zoom kaart op afspraken
-  const bounds = new google.maps.LatLngBounds();
-  markers.forEach(m => bounds.extend(m.getPosition()));
-  map.fitBounds(bounds);
-  document.getElementById("adviceBox").innerHTML = "<strong>Klik minimaal twee afspraken op de kaart, klik daarna op 'Bereken route & advies'.</strong>";
+    const bounds = new google.maps.LatLngBounds();
+    markers.forEach(m => bounds.extend(m.getPosition()));
+    map.fitBounds(bounds);
+  } else {
+    map.setCenter({ lat: 52.1, lng: 5.1 });
+    map.setZoom(7);
+  }
+  const baseMsg = "<strong>Klik minimaal twee afspraken op de kaart, klik daarna op 'Bereken route & advies'.</strong>";
+  document.getElementById("adviceBox").innerHTML = baseMsg + buildUnassignedAdvice(date);
 }
 
 /* ------------ SELECTIE ------------ */
@@ -193,7 +226,8 @@ function resetSelection() {
   selectedMarkers.forEach(m => { m.setAnimation(null); m.setIcon(null); });
   selectedMarkers = [];
   directionsRenderer.set("directions", null);
-  document.getElementById("adviceBox").innerHTML = "<strong>Klik minimaal twee afspraken op de kaart, klik daarna op 'Bereken route & advies'.</strong>";
+  const baseMsg = "<strong>Klik minimaal twee afspraken op de kaart, klik daarna op 'Bereken route & advies'.</strong>";
+  document.getElementById("adviceBox").innerHTML = baseMsg + buildUnassignedAdvice(getSelectedDate());
 }
 
 /* ------------ BESCHIKBAARHEID CHECKBOXEN ------------ */
@@ -264,6 +298,7 @@ async function adviseerBesteMedewerkerPerRoute() {
     }
   }
   advies += "</ul>";
+  advies += buildUnassignedAdvice(date);
   document.getElementById("adviceBox").innerHTML = advies;
 }
 
@@ -306,6 +341,54 @@ function geocodeAddress(address) {
       }
     });
   });
+}
+
+function computeBestEmployee(appt, date) {
+  let best = null;
+  let bestScore = Infinity;
+  let bestShift = 0;
+  let bestTime = appt.tijd;
+  for (let naam in OPERATOR_HOME_ADDRESS) {
+    if (!medewerkerBeschikbaar[naam]) continue;
+    const schedule = appointments
+      .filter(a => a.datum === date && a.medewerker === naam)
+      .sort((a, b) => parseTime(a.tijd) - parseTime(b.tijd));
+    const duration = getDurationForOperator(naam);
+    const desired = parseTime(appt.tijd);
+    let start = desired;
+    for (let i = 0; i < schedule.length; i++) {
+      const sStart = parseTime(schedule[i].tijd);
+      const sEnd = sStart + duration;
+      if (start + duration <= sStart) break;
+      start = Math.max(start, sEnd);
+    }
+    const diff = Math.abs(start - desired);
+    const score = schedule.length * 10000 + diff;
+    if (score < bestScore) {
+      bestScore = score;
+      best = naam;
+      bestShift = start - desired;
+      bestTime = formatTime(start);
+    }
+  }
+  return { employee: best, shift: bestShift, newTime: bestTime };
+}
+
+function buildUnassignedAdvice(date) {
+  const unassigned = appointments.filter(a => a.datum === date && (!a.medewerker || a.medewerker.trim() === ""));
+  if (!unassigned.length) return "";
+  let html = `<b>Onverdeelde afspraken (${unassigned.length}):</b><ul style='padding-left:16px'>`;
+  unassigned.forEach(a => {
+    const info = computeBestEmployee(a, date);
+    if (!info.employee) {
+      html += `<li>${a.klant} (${a.tijd}) → <span class='conflict'>Geen medewerker beschikbaar</span></li>`;
+    } else {
+      const verschuif = info.shift ? `verplaats ${Math.abs(info.shift)} min naar ${info.newTime}` : 'geen verschuiving nodig';
+      html += `<li>${a.klant} (${a.tijd}) → <b>${info.employee}</b> (${verschuif})</li>`;
+    }
+  });
+  html += '</ul>';
+  return html;
 }
 </script>
 </body>
