@@ -202,7 +202,9 @@ function showMarkersForDate(date) {
     map.setZoom(7);
   }
   const baseMsg = "<strong>Klik minimaal twee afspraken op de kaart, klik daarna op 'Bereken route & advies'.</strong>";
-  document.getElementById("adviceBox").innerHTML = baseMsg + buildUnassignedAdvice(date);
+  const advBox = document.getElementById("adviceBox");
+  advBox.innerHTML = baseMsg;
+  buildUnassignedAdvice(date).then(html => { advBox.innerHTML = baseMsg + html; });
 }
 
 /* ------------ SELECTIE ------------ */
@@ -227,7 +229,9 @@ function resetSelection() {
   selectedMarkers = [];
   directionsRenderer.set("directions", null);
   const baseMsg = "<strong>Klik minimaal twee afspraken op de kaart, klik daarna op 'Bereken route & advies'.</strong>";
-  document.getElementById("adviceBox").innerHTML = baseMsg + buildUnassignedAdvice(getSelectedDate());
+  const advBox = document.getElementById("adviceBox");
+  advBox.innerHTML = baseMsg;
+  buildUnassignedAdvice(getSelectedDate()).then(html => { advBox.innerHTML = baseMsg + html; });
 }
 
 /* ------------ BESCHIKBAARHEID CHECKBOXEN ------------ */
@@ -298,7 +302,7 @@ async function adviseerBesteMedewerkerPerRoute() {
     }
   }
   advies += "</ul>";
-  advies += buildUnassignedAdvice(date);
+  advies += await buildUnassignedAdvice(date);
   document.getElementById("adviceBox").innerHTML = advies;
 }
 
@@ -343,9 +347,28 @@ function geocodeAddress(address) {
   });
 }
 
-function computeBestEmployee(appt, date) {
+async function routeInfo(points) {
+  if (points.length < 2) return { distance: 0, time: 0 };
+  let result;
+  try {
+    result = await directionsPromise(points);
+  } catch (e) {
+    return { distance: Infinity, time: Infinity };
+  }
+  let dist = 0, tijd = 0;
+  if (result && result.routes.length) {
+    result.routes[0].legs.forEach(leg => {
+      dist += (leg.distance.value || 0) / 1000;
+      tijd += (leg.duration_in_traffic ? leg.duration_in_traffic.value : leg.duration.value) / 60;
+    });
+  }
+  return { distance: dist, time: tijd };
+}
+
+async function computeBestEmployee(appt, date) {
+  await geocodeAllHomes();
   let best = null;
-  let bestScore = Infinity;
+  let bestExtra = Infinity;
   let bestShift = 0;
   let bestTime = appt.tijd;
   for (let naam in OPERATOR_HOME_ADDRESS) {
@@ -356,16 +379,22 @@ function computeBestEmployee(appt, date) {
     const duration = getDurationForOperator(naam);
     const desired = parseTime(appt.tijd);
     let start = desired;
+    let insertIdx = schedule.length;
     for (let i = 0; i < schedule.length; i++) {
       const sStart = parseTime(schedule[i].tijd);
       const sEnd = sStart + duration;
-      if (start + duration <= sStart) break;
+      if (start + duration <= sStart) { insertIdx = i; break; }
       start = Math.max(start, sEnd);
     }
-    const diff = Math.abs(start - desired);
-    const score = schedule.length * 10000 + diff;
-    if (score < bestScore) {
-      bestScore = score;
+    const basePoints = [geocodedHomes[naam], ...schedule.map(a => ({ lat: a.lat, lng: a.lon }))];
+    const newSchedule = schedule.slice();
+    newSchedule.splice(insertIdx, 0, appt);
+    const newPoints = [geocodedHomes[naam], ...newSchedule.map(a => ({ lat: a.lat, lng: a.lon }))];
+    const base = await routeInfo(basePoints);
+    const nieuw = await routeInfo(newPoints);
+    const extraTime = nieuw.time - base.time;
+    if (extraTime < bestExtra) {
+      bestExtra = extraTime;
       best = naam;
       bestShift = start - desired;
       bestTime = formatTime(start);
@@ -374,19 +403,19 @@ function computeBestEmployee(appt, date) {
   return { employee: best, shift: bestShift, newTime: bestTime };
 }
 
-function buildUnassignedAdvice(date) {
+async function buildUnassignedAdvice(date) {
   const unassigned = appointments.filter(a => a.datum === date && (!a.medewerker || a.medewerker.trim() === ""));
   if (!unassigned.length) return "";
   let html = `<b>Onverdeelde afspraken (${unassigned.length}):</b><ul style='padding-left:16px'>`;
-  unassigned.forEach(a => {
-    const info = computeBestEmployee(a, date);
+  for (const a of unassigned) {
+    const info = await computeBestEmployee(a, date);
     if (!info.employee) {
       html += `<li>${a.klant} (${a.tijd}) → <span class='conflict'>Geen medewerker beschikbaar</span></li>`;
     } else {
       const verschuif = info.shift ? `verplaats ${Math.abs(info.shift)} min naar ${info.newTime}` : 'geen verschuiving nodig';
       html += `<li>${a.klant} (${a.tijd}) → <b>${info.employee}</b> (${verschuif})</li>`;
     }
-  });
+  }
   html += '</ul>';
   return html;
 }
