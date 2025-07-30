@@ -54,12 +54,37 @@
     <div class="section">
       <h2>Afspraakduur per Operator</h2>
       <div class="grid-two">
-        <div class="field"><label for="duration-roelof">Roelof (👨‍🌾)</label><select id="duration-roelof"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></div>
-        <div class="field"><label for="duration-jesse">Jesse (🚀)</label><select id="duration-jesse"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></div>
-        <div class="field"><label for="duration-chanice">Chanice (✨)</label><select id="duration-chanice"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></div>
-        <div class="field"><label for="duration-karlijn">Karlijn (🌸)</label><select id="duration-karlijn"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></div>
-        <div class="field"><label for="duration-keith">Keith (🟡)</label><select id="duration-keith"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></div>
-        <div class="field"><label for="duration-gio">Gio (👑)</label><select id="duration-gio"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></div>
+        <!-- herhaal per medewerker -->
+        <div class="field"><label for="duration-roelof">Roelof (👨‍🌾)</label>
+          <select id="duration-roelof">
+            <option>30</option><option>45</option><option selected>60</option><option>90</option>
+          </select>
+        </div>
+        <div class="field"><label for="duration-jesse">Jesse (🚀)</label>
+          <select id="duration-jesse">
+            <option>30</option><option>45</option><option selected>60</option><option>90</option>
+          </select>
+        </div>
+        <div class="field"><label for="duration-chanice">Chanice (✨)</label>
+          <select id="duration-chanice">
+            <option>30</option><option>45</option><option selected>60</option><option>90</option>
+          </select>
+        </div>
+        <div class="field"><label for="duration-karlijn">Karlijn (🌸)</label>
+          <select id="duration-karlijn">
+            <option>30</option><option>45</option><option selected>60</option><option>90</option>
+          </select>
+        </div>
+        <div class="field"><label for="duration-keith">Keith (🟡)</label>
+          <select id="duration-keith">
+            <option>30</option><option>45</option><option selected>60</option><option>90</option>
+          </select>
+        </div>
+        <div class="field"><label for="duration-gio">Gio (👑)</label>
+          <select id="duration-gio">
+            <option>30</option><option>45</option><option selected>60</option><option>90</option>
+          </select>
+        </div>
       </div>
     </div>
     <div class="section">
@@ -69,123 +94,208 @@
     <button onclick="resetSelection()">🔄 Reset selectie</button>
     <button onclick="planRoute()">🚗 Bereken route & advies</button>
   </div>
+
   <div id="map"></div>
   <div id="adviceBox">
     <strong>Klik minimaal twee afspraken op de kaart, klik daarna op 'Bereken route & advies'.</strong>
   </div>
+
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDTvDRPKBT7KDONeDgekEXlN1_CMZUtX4U&callback=initMap" async defer></script>
   <script>
     // CONFIG & HELPERS
-    const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrfGrf...pub?output=csv";
-    const OPERATOR_EMOJI = { Roelof: "👨‍🌾", Jesse: "🚀", Chanice: "✨", Karlijn: "🌸", Keith: "🟡", Gio: "👑" };
+    const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrfGrf.../pub?output=csv";
+    const OPERATOR_EMOJI = { Roelof:"👨‍🌾", Jesse:"🚀", Chanice:"✨", Karlijn:"🌸", Keith:"🟡", Gio:"👑" };
     const OPERATOR_HOME_ADDRESS = {
-      Roelof: "Hemelrijk 9, Puiflijk",
-      Chanice: "Harddraverstraat 32A, 3033 XL Rotterdam",
-      Gio: "Savelsbos 304, 2716 HR Zoetermeer",
-      Karlijn: "Spitael 92, 9202 HG Drachten",
-      Jesse: "Kalf 406, 1509 BE Zaandam",
-      Keith: "Jouw Straatnaam 123, 1234 AB JouwPlaats"
+      Roelof:"Hemelrijk 9, Puiflijk",
+      Chanice:"Harddraverstraat 32A, 3033 XL Rotterdam",
+      Gio:"Savelsbos 304, 2716 HR Zoetermeer",
+      Karlijn:"Spitael 92, 9202 HG Drachten",
+      Jesse:"Kalf 406, 1509 BE Zaandam",
+      Keith:"Jouw Straatnaam 123, 1234 AB JouwPlaats"
     };
     const KM_COST = 0.21, TIME_COST = 35;
     let map, directionsService, directionsRenderer;
     let appointments = [], markers = [], selectedMarkers = [], filteredAppointments = [];
-    let medewerkerBeschikbaar = { Roelof: true, Jesse: true, Chanice: true, Karlijn: true, Keith: true, Gio: true };
-    let geocodedHomes = {};
+    let medewerkerBeschikbaar = {}, geocodedHomes = {};
 
     function initMap() {
-      map = new google.maps.Map(document.getElementById("map"), { center: { lat: 52.1, lng: 5.1 }, zoom: 7 });
+      map = new google.maps.Map(document.getElementById("map"), { center:{lat:52.1,lng:5.1}, zoom:7 });
       directionsService = new google.maps.DirectionsService();
       directionsRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers: true });
-      fetchAppointments(); renderBeschikbaarheidsCheckboxen();
+      // init beschikbaarheids-flags
+      Object.keys(OPERATOR_HOME_ADDRESS).forEach(n=>medewerkerBeschikbaar[n]=true);
+      fetchAppointments();
+      renderBeschikbaarheidsCheckboxen();
     }
 
     function fetchAppointments() {
       fetch(SHEET_URL).then(r=>r.text()).then(csv=>{
-        appointments = csv.split("\n").slice(1).map(row => {
-          const [datum, medewerker, klant, adres, status, tijd, , , lat, lon] = row.split(",");
-          return { datum, medewerker, klant, adres, status, tijd, lat: parseFloat(lat), lon: parseFloat(lon) };
-        }).filter(a => !isNaN(a.lat));
-        fillDateFilter(); showMarkersForDate(getSelectedDate());
-      });
+        const rows = csv.trim().split("\n").slice(1);
+        appointments = rows.map(row=>{
+          const cols = row.split(",");
+          const datum    = cols[0];
+          const medewerker = cols[1];
+          const klant    = cols[2];
+          const adres    = cols[3];
+          const status   = cols[4];
+          const tijd     = cols[5];
+          // pak laatste twee kolommen als lat/lng
+          const lat = parseFloat(cols[cols.length-2]);
+          const lon = parseFloat(cols[cols.length-1]);
+          return { datum, medewerker, klant, adres, status, tijd, lat, lon };
+        }).filter(a=>!isNaN(a.lat) && !isNaN(a.lon));
+        console.log("Gevonden afspraken:", appointments.length);
+        fillDateFilter();
+        showMarkersForDate(getSelectedDate());
+      }).catch(err=>console.error("CSV laden mislukt:", err));
     }
 
     function fillDateFilter() {
       const sel = document.getElementById("date-filter");
       const dates = [...new Set(appointments.map(a=>a.datum))].filter(d=>d).sort((a,b)=>new Date(a)-new Date(b));
       sel.innerHTML = dates.map(d=>`<option>${d}</option>`).join("");
-      sel.value = dates.find(d=>d>=new Date().toISOString().slice(0,10)) || dates[0];
-      sel.onchange = () => showMarkersForDate(sel.value);
+      sel.value = dates.find(d=>d>=new Date().toISOString().slice(0,10)) || dates[0] || "";
+      sel.onchange = ()=>showMarkersForDate(sel.value);
     }
-
     function getSelectedDate(){ return document.getElementById("date-filter").value; }
 
-    function showMarkersForDate(date){
-      markers.forEach(m=>m.setMap(null)); markers=[]; selectedMarkers=[];
+    function showMarkersForDate(date) {
+      markers.forEach(m=>m.setMap(null)); markers = []; selectedMarkers = [];
       filteredAppointments = appointments.filter(a=>a.datum===date);
-      if(!filteredAppointments.length) return;
+      if (!filteredAppointments.length) {
+        document.getElementById("adviceBox").innerHTML = "<strong>Geen afspraken op deze datum.</strong>";
+        return;
+      }
       filteredAppointments.forEach(a=>{
-        const m = new google.maps.Marker({ position:{lat:a.lat,lng:a.lon}, map,
-          title:`${a.medewerker} – ${a.klant} (${a.tijd})`, label:{text:OPERATOR_EMOJI[a.medewerker],fontSize:"20px"}
-        }); m.metadata=a; m.addListener("click",()=>toggleSelect(m)); markers.push(m);
+        const m = new google.maps.Marker({
+          position:{lat:a.lat,lng:a.lon}, map,
+          title:`${a.medewerker} – ${a.klant} (${a.tijd})`,
+          label:{text: OPERATOR_EMOJI[a.medewerker], fontSize:"20px"}
+        });
+        m.metadata = a;
+        m.addListener("click", ()=>toggleSelect(m));
+        markers.push(m);
       });
-      const bounds=new google.maps.LatLngBounds(); markers.forEach(m=>bounds.extend(m.getPosition())); map.fitBounds(bounds);
-      document.getElementById("adviceBox").innerHTML="<strong>Klik minimaal twee afspraken...</strong>";
+      const bounds = new google.maps.LatLngBounds();
+      markers.forEach(m=>bounds.extend(m.getPosition()));
+      map.fitBounds(bounds);
+      document.getElementById("adviceBox").innerHTML = "<strong>Klik minimaal twee afspraken...</strong>";
     }
 
-    function toggleSelect(m){
-      if(selectedMarkers.includes(m)) { m.setAnimation(null); selectedMarkers=selectedMarkers.filter(x=>x!==m); }
-      else { m.setAnimation(google.maps.Animation.BOUNCE); selectedMarkers.push(m); }
+    function toggleSelect(marker) {
+      if (selectedMarkers.includes(marker)) {
+        marker.setAnimation(null);
+        selectedMarkers = selectedMarkers.filter(m=>m!==marker);
+      } else {
+        marker.setAnimation(google.maps.Animation.BOUNCE);
+        selectedMarkers.push(marker);
+      }
     }
 
     function resetSelection(){
-      selectedMarkers.forEach(m=>m.setAnimation(null)); selectedMarkers=[];
+      selectedMarkers.forEach(m=>m.setAnimation(null));
+      selectedMarkers = [];
       directionsRenderer.setDirections({routes:[]});
-      document.getElementById("adviceBox").innerHTML="<strong>Klik minimaal twee afspraken...</strong>";
+      document.getElementById("adviceBox").innerHTML = "<strong>Klik minimaal twee afspraken...</strong>";
     }
 
     function renderBeschikbaarheidsCheckboxen(){
-      const div=document.getElementById("availability"); div.innerHTML="";
+      const div = document.getElementById("availability");
+      div.innerHTML = "";
       Object.keys(OPERATOR_HOME_ADDRESS).forEach(n=>{
-        div.innerHTML+=`<div class="checkbox-row"><input type="checkbox" id="chk_${n}" checked onchange="toggleBeschikbaarheid('${n}')"><label for="chk_${n}">${n} (${OPERATOR_EMOJI[n]})</label></div>`;
+        div.innerHTML += `
+          <div class="checkbox-row">
+            <input type="checkbox" id="chk_${n}" checked onchange="toggleBeschikbaarheid('${n}')">
+            <label for="chk_${n}">${n} (${OPERATOR_EMOJI[n]})</label>
+          </div>`;
       });
     }
-    function toggleBeschikbaarheid(n){ medewerkerBeschikbaar[n]=!medewerkerBeschikbaar[n]; }
+    function toggleBeschikbaarheid(n){
+      medewerkerBeschikbaar[n] = !medewerkerBeschikbaar[n];
+    }
 
-    function planRoute(){ if(selectedMarkers.length<2){ alert('Selecteer minimaal twee afspraken.'); return; } adviseer(); }
+    function planRoute(){
+      if (selectedMarkers.length < 2) {
+        alert('Selecteer minimaal twee afspraken.');
+        return;
+      }
+      adviseer();
+    }
 
     async function adviseer(){
       document.getElementById("adviceBox").textContent = 'Route advies wordt berekend…';
       await geocodeHomes();
-      let best={cost:Infinity}, result;
-      for(let n in OPERATOR_HOME_ADDRESS){ if(!medewerkerBeschikbaar[n]) continue;
-        const pts=[geocodedHomes[n],...selectedMarkers.map(m=>({lat:m.metadata.lat,lng:m.metadata.lon}))];
-        try{ result=await routePromise(pts); }catch{continue;}
-        const leg=result.routes[0].legs.reduce((sum,leg)=>({dist:sum.dist+leg.distance.value/1000,time:sum.time+leg.duration.value/60}),{dist:0,time:0});
-        const cost=leg.dist*KM_COST + (leg.time/60)*TIME_COST;
-        if(cost<best.cost) best={name:n,emoji:OPERATOR_EMOJI[n],route:result,dist:leg.dist,time:leg.time,cost};
+      let best = { cost: Infinity };
+      for (let naam in OPERATOR_HOME_ADDRESS) {
+        if (!medewerkerBeschikbaar[naam]) continue;
+        const thuis = geocodedHomes[naam];
+        const waypts = selectedMarkers.map(m=>({ lat:m.metadata.lat, lng:m.metadata.lon }));
+        const pts = [thuis, ...waypts];
+        let res;
+        try {
+          res = await routePromise(pts);
+        } catch(e) {
+          console.warn(`Route voor ${naam} mislukt:`, e);
+          continue;
+        }
+        const stats = res.routes[0].legs.reduce((acc, leg)=>{
+          return {
+            dist: acc.dist + leg.distance.value/1000,
+            time: acc.time + leg.duration.value/60
+          };
+        }, { dist:0, time:0 });
+        const cost = stats.dist*KM_COST + (stats.time/60)*TIME_COST;
+        if (cost < best.cost) {
+          best = { naam, emoji: OPERATOR_EMOJI[naam], route: res, ...stats, cost };
+        }
       }
-      if(best.name){
+      if (best.route) {
         directionsRenderer.setDirections(best.route);
-        document.getElementById("adviceBox").innerHTML = `<strong>Medewerker: ${best.emoji} ${best.name}</strong><ul>`+
-          `<li>Stops: ${selectedMarkers.length}</li>`+
-          `<li>Afstand: ${best.dist.toFixed(1)} km</li>`+
-          `<li>Tijd: ${Math.round(best.time)} min</li>`+
-          `<li>Kosten: €${Math.round(best.cost)}</li>`+`</ul>`;
-      } else document.getElementById("adviceBox").textContent='Geen medewerker gevonden.';
+        document.getElementById("adviceBox").innerHTML =
+          `<strong>Medewerker: ${best.emoji} ${best.naam}</strong>
+          <ul>
+            <li>Stops: ${selectedMarkers.length}</li>
+            <li>Afstand: ${best.dist.toFixed(1)} km</li>
+            <li>Tijd: ${Math.round(best.time)} min</li>
+            <li>Kosten: €${Math.round(best.cost)}</li>
+          </ul>`;
+      } else {
+        document.getElementById("adviceBox").textContent = 'Geen medewerker beschikbaar voor route.';
+      }
     }
 
     function routePromise(pts){
-      return new Promise((res,rej)=>{
-        directionsService.route({ origin:pts[0], destination:pts.pop(), waypoints:pts.slice(1).map(p=>({location:p,stopover:true})),
-          travelMode:'DRIVING', optimizeWaypoints:true, drivingOptions:{departureTime:new Date(),trafficModel:'bestguess'}
-        },(r,s)=>s==='OK'?res(r):rej(s));
+      return new Promise((resolve, reject)=>{
+        directionsService.route({
+          origin: pts[0],
+          destination: pts[pts.length-1],
+          waypoints: pts.slice(1, -1).map(p=>({ location: p, stopover: true })),
+          travelMode: 'DRIVING',
+          optimizeWaypoints: true,
+          drivingOptions: { departureTime: new Date(), trafficModel: 'bestguess' }
+        }, (res, status)=>{
+          if (status==='OK') resolve(res);
+          else reject(status);
+        });
       });
     }
 
     async function geocodeHomes(){
-      const geo=new google.maps.Geocoder();
-      for(let n in OPERATOR_HOME_ADDRESS){ if(!geocodedHomes[n]){
-          geocodedHomes[n]=await new Promise(r=>geo.geocode({address:OPERATOR_HOME_ADDRESS[n]},(res,st)=>(r(st==='OK'?{lat:res[0].geometry.location.lat(),lng:res[0].geometry.location.lng()}:{lat:52.1,lng:5.1}))); }
+      const geocoder = new google.maps.Geocoder();
+      for (let naam in OPERATOR_HOME_ADDRESS) {
+        if (!geocodedHomes[naam]) {
+          geocodedHomes[naam] = await new Promise(r => {
+            geocoder.geocode({ address: OPERATOR_HOME_ADDRESS[naam] }, (results, status) => {
+              if (status==='OK') {
+                const loc = results[0].geometry.location;
+                r({ lat: loc.lat(), lng: loc.lng() });
+              } else {
+                console.warn(`Geocode ${naam} mislukt, fallback.`);
+                r({ lat: 52.1, lng: 5.1 });
+              }
+            });
+          });
+        }
       }
     }
   </script>
