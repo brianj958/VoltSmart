@@ -4,83 +4,137 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Voltsmart Afsprakenkaart</title>
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
   <style>
-    * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; background: #f4f6f8; color: #333; }
-    #map { height: 100vh; width: calc(100% - 300px); position: absolute; top: 0; right: 0; }
-    #sidebar {
-      position: absolute; top: 0; left: 0; width: 300px; height: 100vh;
-      background: #fff; padding: 20px; overflow-y: auto; box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+    :root {
+      --primary: #0052cc;
+      --primary-dark: #003d99;
+      --bg: #f4f6f8;
+      --sidebar-bg: #ffffff;
+      --text: #333333;
+      --shadow: rgba(0, 0, 0, 0.1);
     }
-    #logo { text-align: center; margin-bottom: 20px; }
-    #logo img { max-width: 180px; }
-    h2 { font-size: 18px; margin: 20px 0 10px; color: #0052cc; border-bottom: 1px solid #e1e1e1; padding-bottom: 5px; }
-    .section { margin-bottom: 15px; }
-    .field { margin-bottom: 10px; }
-    label { display: block; font-weight: 500; margin-bottom: 5px; }
-    select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-    .grid-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .checkbox-row { display: flex; align-items: center; margin-bottom: 8px; }
-    .checkbox-row input { margin-right: 8px; }
+    * { box-sizing: border-box; margin:0; padding:0; }
+    html, body { height:100%; background: var(--bg); font-family: 'Inter', sans-serif; color: var(--text); }
+    .container { display: flex; height:100%; }
+    aside {
+      width: 300px; background: var(--sidebar-bg);
+      padding: 20px; overflow-y: auto;
+      box-shadow: 2px 0 8px var(--shadow);
+    }
+    main { flex:1; position: relative; }
+    #map { width:100%; height:100%; }
+    h1 { font-size: 20px; margin-bottom: 16px; color: var(--primary); }
+    h2 { font-size: 16px; margin:24px 0 8px; border-bottom:1px solid #e0e0e0; padding-bottom:4px; color: var(--primary); }
+    label { display: block; margin-bottom: 6px; font-weight:600; }
+    select, button { width:100%; }
+    select {
+      padding:8px; border:1px solid #ccc; border-radius:4px;
+      background:#fff; appearance:none;
+    }
+    .grid-two { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .checkbox-row { display:flex; align-items:center; margin-bottom:10px;}
+    .checkbox-row input { margin-right:8px; }
     button {
-      width: 100%; padding: 10px; margin-top: 10px;
-      border: none; border-radius: 4px;
-      background: #0052cc; color: white; font-size: 14px; cursor: pointer;
+      margin-top:10px; padding:10px; border:none; border-radius:4px;
+      background: var(--primary); color:#fff; font-weight:600; cursor:pointer;
       transition: background 0.2s;
     }
-    button:hover { background: #003d99; }
+    button:hover { background: var(--primary-dark); }
     #adviceBox {
-      position: absolute; bottom: 20px; right: 20px; width: 280px;
-      background: rgba(255,255,255,0.95); color: #333;
-      padding: 15px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      font-size: 14px; line-height: 1.4;
+      position:absolute; bottom:20px; left:20px;
+      background:#fff; padding:15px; border-radius:6px;
+      box-shadow:0 2px 8px var(--shadow); max-width:280px;
+      font-size:14px;
     }
-    ul { margin: 8px 0 0 16px; padding: 0; }
+    #loading {
+      position:absolute; top:50%; left:50%;
+      transform:translate(-50%, -50%); background:rgba(255,255,255,0.9);
+      padding:20px; border-radius:6px; box-shadow:0 2px 8px var(--shadow);
+      display:none; font-size:14px; text-align:center;
+    }
+    /* Modal */
+    #modal {
+      position:fixed; top:0; left:0; width:100%; height:100%;
+      background:rgba(0,0,0,0.4); display:none; align-items:center; justify-content:center;
+    }
+    #modal .content {
+      background:#fff; padding:20px; border-radius:6px; width:90%; max-width:400px;
+      box-shadow:0 2px 8px var(--shadow);
+    }
+    #modal h3 { margin-bottom:12px; color: var(--primary); }
+    #modal ul { margin-left:20px; margin-bottom:12px; }
+    #modal button { width:auto; padding:8px 16px; }
   </style>
 </head>
 <body>
-  <div id="sidebar">
-    <div id="logo">
-      <img src="https://cdn.prod.website-files.com/68503ddc6fb75a92cad47e2a/686c04721a3b9d5a4dc5c9a0_Group%2032%20(1).svg" alt="Voltsmart Logo">
-    </div>
+  <div class="container">
+    <aside>
+      <h1>Voltsmart Afsprakenkaart</h1>
 
-    <div class="section">
-      <h2>Afspraken &amp; Instellingen</h2>
-      <div class="field">
-        <label for="date-filter">Datum</label>
-        <select id="date-filter"></select>
-      </div>
-    </div>
+      <h2>Datum filter</h2>
+      <label for="date-filter">Kies datum</label>
+      <select id="date-filter"></select>
 
-    <div class="section">
-      <h2>Afspraakduur per Operator</h2>
+      <h2>Afspraakduur per operator</h2>
       <div class="grid-two">
-        <div class="field"><label for="duration-roelof">Roelof (👨‍🌾)</label><select id="duration-roelof"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></div>
-        <div class="field"><label for="duration-jesse">Jesse (🚀)</label><select id="duration-jesse"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></div>
-        <div class="field"><label for="duration-chanice">Chanice (✨)</label><select id="duration-chanice"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></div>
-        <div class="field"><label for="duration-karlijn">Karlijn (🌸)</label><select id="duration-karlijn"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></div>
-        <div class="field"><label for="duration-keith">Keith (🟡)</label><select id="duration-keith"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></div>
-        <div class="field"><label for="duration-gio">Gio (👑)</label><select id="duration-gio"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></div>
+        <div>
+          <label for="duration-roelof">Roelof</label>
+          <select id="duration-roelof"><option>30</option><option>45</option><option selected>60</option><option>90</option></select>
+        </div>
+        <div>
+          <label for="duration-jesse">Jesse</label>
+          <select id="duration-jesse"><option>30</option><option>45</option><option selected>60</option><option>90</option></select>
+        </div>
+        <div>
+          <label for="duration-chanice">Chanice</label>
+          <select id="duration-chanice"><option>30</option><option>45</option><option selected>60</option><option>90</option></select>
+        </div>
+        <div>
+          <label for="duration-karlijn">Karlijn</label>
+          <select id="duration-karlijn"><option>30</option><option>45</option><option selected>60</option><option>90</option></select>
+        </div>
+        <div>
+          <label for="duration-keith">Keith</label>
+          <select id="duration-keith"><option>30</option><option>45</option><option selected>60</option><option>90</option></select>
+        </div>
+        <div>
+          <label for="duration-gio">Gio</label>
+          <select id="duration-gio"><option>30</option><option>45</option><option selected>60</option><option>90</option></select>
+        </div>
       </div>
-    </div>
 
-    <div class="section">
-      <h2>Beschikbaarheid medewerkers</h2>
+      <h2>Beschikbaarheid</h2>
       <div id="availability"></div>
+
+      <button onclick="resetSelection()">Reset selectie</button>
+      <button onclick="planRoute()">Bereken route & advies</button>
+    </aside>
+
+    <main>
+      <div id="map"></div>
+      <div id="adviceBox">
+        <strong>Klik minimaal twee afspraken...</strong>
+      </div>
+      <div id="loading">Afspraken laden…</div>
+    </main>
+  </div>
+
+  <!-- Modal voor verplaatsadvies -->
+  <div id="modal">
+    <div class="content">
+      <h3>Verplaatsadvies</h3>
+      <ul id="modal-list"></ul>
+      <button onclick="document.getElementById('modal').style.display='none'">Sluiten</button>
     </div>
-
-    <button onclick="resetSelection()">🔄 Reset selectie</button>
-    <button onclick="planRoute()">🚗 Bereken route &amp; advies</button>
   </div>
 
-  <div id="map"></div>
-  <div id="adviceBox">
-    <strong>Klik minimaal twee afspraken op de kaart, klik daarna op 'Bereken route &amp; advies'.</strong>
-  </div>
-
-  <!-- Jouw logica vóór de Maps API laden -->
+  <!-- Jouw logica vóór Maps API -->
   <script>
-    window.initMap = initMap;  // maak callback beschikbaar
+    window.initMap = initMap;
 
     const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv";
     const OPERATOR_EMOJI = { Roelof:"👨‍🌾", Jesse:"🚀", Chanice:"✨", Karlijn:"🌸", Keith:"🟡", Gio:"👑" };
@@ -108,24 +162,33 @@
     }
 
     function fetchAppointments() {
-      fetch(SHEET_URL).then(r=>r.text()).then(csv=>{
-        const rows = csv.trim().split(/\r?\n/).slice(1);
-        appointments = rows.map(row=>{
-          const cols = row.split(",");
-          // haal lon, lat van het eind
-          const lon = parseFloat(cols.pop()), lat = parseFloat(cols.pop());
-          const [datum, medewerker, klant, adres, status, tijd] = cols;
-          return { datum, medewerker, klant, adres, status, tijd, lat, lon };
-        }).filter(a=>!isNaN(a.lat) && !isNaN(a.lon));
-        console.log("Gelezen afspraken:", appointments.length);
-        fillDateFilter();
-        showMarkersForDate(getSelectedDate());
-      }).catch(err=>console.error("CSV laden mislukt:",err));
+      document.getElementById("loading").style.display = "block";
+      fetch(SHEET_URL)
+        .then(r => r.text())
+        .then(csv => {
+          const rows = csv.trim().split(/\r?\n/).slice(1);
+          appointments = rows.map(row => {
+            const cols = row.split(",");
+            const lon = parseFloat(cols.pop());
+            const lat = parseFloat(cols.pop());
+            const [datum, medewerker, klant, adres, status, tijd] = cols;
+            return { datum, medewerker, klant, adres, status, tijd, lat, lon };
+          }).filter(a => !isNaN(a.lat) && !isNaN(a.lon));
+          console.log("Gelezen afspraken:", appointments.length);
+          document.getElementById("loading").style.display = "none";
+          fillDateFilter();
+          showMarkersForDate(getSelectedDate());
+        })
+        .catch(err => {
+          console.error("CSV laden mislukt:", err);
+          document.getElementById("loading").textContent = "Fout laden afspraken";
+        });
     }
 
     function fillDateFilter() {
       const sel = document.getElementById("date-filter");
-      const dates = [...new Set(appointments.map(a=>a.datum))].sort((a,b)=>new Date(a)-new Date(b));
+      const dates = [...new Set(appointments.map(a=>a.datum))]
+        .sort((a,b)=>new Date(a)-new Date(b));
       sel.innerHTML = dates.map(d=>`<option>${d}</option>`).join("");
       sel.value = dates.find(d=>d>=new Date().toISOString().slice(0,10))||dates[0]||"";
       sel.onchange = ()=>showMarkersForDate(sel.value);
@@ -136,10 +199,12 @@
       markers.forEach(m=>m.setMap(null));
       markers=[]; selectedMarkers=[];
       filteredAppointments = appointments.filter(a=>a.datum===date);
+
       if(!filteredAppointments.length){
         document.getElementById("adviceBox").innerHTML = "<strong>Geen afspraken op deze datum.</strong>";
         return;
       }
+
       filteredAppointments.forEach(a=>{
         const m = new google.maps.Marker({
           position:{lat:a.lat,lng:a.lon}, map,
@@ -150,9 +215,11 @@
         m.addListener("click",()=>toggleSelect(m));
         markers.push(m);
       });
+
       const bounds = new google.maps.LatLngBounds();
       markers.forEach(m=>bounds.extend(m.getPosition()));
       map.fitBounds(bounds);
+
       document.getElementById("adviceBox").innerHTML = "<strong>Klik minimaal twee afspraken...</strong>";
     }
 
@@ -199,54 +266,52 @@
     async function adviseer(){
       document.getElementById("adviceBox").textContent = "Route-advies wordt berekend…";
       await geocodeHomes();
+
       let best={cost:Infinity}, bestRoute;
       for(let naam in OPERATOR_HOME_ADDRESS){
         if(!medewerkerBeschikbaar[naam]) continue;
-        const thuis = geocodedHomes[naam];
-        const stops = selectedMarkers.map(m=>({lat:m.metadata.lat,lng:m.metadata.lon}));
-        const pts = [thuis, ...stops];
+        const thuis=geocodedHomes[naam];
+        const stops=selectedMarkers.map(m=>({lat:m.metadata.lat,lng:m.metadata.lon}));
+        const pts=[thuis,...stops];
         let res;
-        try{
-          res = await routePromise(pts);
-        }catch{
-          continue;
-        }
-        const {legs, waypoint_order} = res.routes[0];
-        // bereken kosten
-        const stats = legs.reduce((acc,leg)=>({
-          dist: acc.dist + leg.distance.value/1000,
-          time: acc.time + leg.duration.value/60
+        try{ res=await routePromise(pts); }catch{ continue; }
+        const legs=res.routes[0].legs;
+        const stats=legs.reduce((acc,leg)=>({
+          dist:acc.dist+leg.distance.value/1000,
+          time:acc.time+leg.duration.value/60
         }),{dist:0,time:0});
-        const cost = stats.dist*KM_COST + (stats.time/60)*TIME_COST;
+        const cost=stats.dist*KM_COST + (stats.time/60)*TIME_COST;
         if(cost<best.cost){
-          best={naam,emoji:OPERATOR_EMOJI[naam],stats,cost,legs,waypoint_order,stops};
-          bestRoute = res;
+          best={naam,emoji:OPERATOR_EMOJI[naam],stats,cost,legs,stops};
+          bestRoute=res;
         }
       }
+
       if(!bestRoute){
-        document.getElementById("adviceBox").textContent = "Geen medewerker beschikbaar voor route.";
+        document.getElementById("adviceBox").textContent="Geen medewerker beschikbaar.";
         return;
       }
-      // toon route
       directionsRenderer.setDirections(bestRoute);
-      // advies pop-up: hoeveel verzetten?
-      const {legs, waypoint_order, stops} = best;
-      // bouw geordende stops
-      const ordered = waypoint_order.map(i=>selectedMarkers[i]).concat([selectedMarkers[selectedMarkers.length-1]]);
-      const suggestions = [];
-      for(let j=1;j<legs.length;j++){
-        const leg = legs[j];
-        const prev = ordered[j-1].metadata, next = ordered[j].metadata;
-        const parseM = t=>{const [h,m]=t.split(":");return parseInt(h)*60+parseInt(m);};
-        const schedInterval = parseM(next.tijd) - parseM(prev.tijd);
-        const travel = Math.round(leg.duration.value/60);
-        const diff = schedInterval - travel;
-        if(diff<0) suggestions.push(`${next.klant} ${Math.abs(diff)} min eerder plannen.`);
-        else if(diff>0) suggestions.push(`${next.klant} ${diff} min later plannen.`);
-        else suggestions.push(`${next.klant} precies op tijd.`);
+
+      // bereken verplaatsadvies
+      const suggestions=[];
+      for(let i=1;i<best.legs.length;i++){
+        const prev=best.legs[i-1], cur=best.legs[i];
+        const prevMeta=selectedMarkers[i-1].metadata, curMeta=selectedMarkers[i].metadata;
+        const toMinutes=t=>{const [h,m]=t.split(":");return+h*60+ +m;};
+        const slot=toMinutes(curMeta.tijd)-toMinutes(prevMeta.tijd);
+        const travel=Math.round(cur.duration.value/60);
+        const diff=slot-travel;
+        if(diff<0) suggestions.push(`${curMeta.klant}: plan ${Math.abs(diff)} min eerder`);
+        else if(diff>0) suggestions.push(`${curMeta.klant}: plan ${diff} min later`);
+        else suggestions.push(`${curMeta.klant}: tijd is oké`);
       }
-      alert("Verplaatsadvies:\n" + suggestions.join("\n"));
-      // update sidebar advies
+      // toon modal
+      const ul=document.getElementById("modal-list");
+      ul.innerHTML = suggestions.map(s=>`<li>${s}</li>`).join("");
+      document.getElementById("modal").style.display = "flex";
+
+      // update adviesBox
       document.getElementById("adviceBox").innerHTML =
         `<strong>Medewerker: ${best.emoji} ${best.naam}</strong>
          <ul>
@@ -258,30 +323,24 @@
     }
 
     function routePromise(pts){
-      return new Promise((res,rej)=>{
+      return new Promise((resolve,reject)=>{
         directionsService.route({
-          origin: pts[0],
-          destination: pts[pts.length-1],
-          waypoints: pts.slice(1,-1).map(p=>({location:p,stopover:true})),
-          travelMode:"DRIVING",
-          optimizeWaypoints:true,
+          origin:pts[0], destination:pts[pts.length-1],
+          waypoints:pts.slice(1,-1).map(p=>({location:p,stopover:true})),
+          travelMode:"DRIVING", optimizeWaypoints:true,
           drivingOptions:{departureTime:new Date(),trafficModel:"bestguess"}
-        },(r,s)=> s==="OK"?res(r):rej(s));
+        },(r,s)=>s==="OK"?resolve(r):reject(s));
       });
     }
 
     async function geocodeHomes(){
-      const geocoder = new google.maps.Geocoder();
+      const geocoder=new google.maps.Geocoder();
       for(let n in OPERATOR_HOME_ADDRESS){
         if(!geocodedHomes[n]){
-          geocodedHomes[n] = await new Promise(r=>{
-            geocoder.geocode({address:OPERATOR_HOME_ADDRESS[n]},(results,status)=>{
-              if(status==="OK"){
-                const loc = results[0].geometry.location;
-                r({lat:loc.lat(),lng:loc.lng()});
-              } else {
-                r({lat:52.1,lng:5.1});
-              }
+          geocodedHomes[n]=await new Promise(r=>{
+            geocoder.geocode({address:OPERATOR_HOME_ADDRESS[n]},(res,st)=>{
+              if(st==="OK"){const loc=res[0].geometry.location; r({lat:loc.lat(),lng:loc.lng()});}
+              else r({lat:52.1,lng:5.1});
             });
           });
         }
