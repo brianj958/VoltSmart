@@ -1,239 +1,193 @@
 <!DOCTYPE html>
-<html>
+<html lang="nl">
 <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Voltsmart Afsprakenkaart</title>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    html, body { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; background: linear-gradient(180deg, #0a1a2f, #1b2e4a); color: white; }
-    #map { height: 100vh; width: 100vw; z-index: 1; position: absolute; top: 0; left: 0; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; background: #f4f6f8; color: #333; }
+    #map { height: 100vh; width: calc(100% - 300px); position: absolute; top: 0; right: 0; }
     #sidebar {
-      position: absolute; top: 0; left: 0; width: 360px; height: 100vh;
-      background: rgba(10, 20, 40, 0.97); padding: 20px 18px 12px 18px;
-      box-sizing: border-box; overflow-y: auto; z-index: 999;
-      box-shadow: 2px 0 8px rgba(0,0,0,0.23);
+      position: absolute; top: 0; left: 0; width: 300px; height: 100vh;
+      background: #ffffff; padding: 20px; overflow-y: auto;
+      box-shadow: 2px 0 8px rgba(0,0,0,0.1);
     }
-    #logo { text-align: center; margin-bottom: 18px; }
-    #logo img { max-width: 190px; }
-    h2 { font-size: 20px; margin-bottom: 10px; color: #ffd700; }
-    label, select, button { display: block; width: 100%; margin-top: 10px; }
-    select, button {
-      padding: 7px; border-radius: 6px; border: none;
-    }
+    #logo { text-align: center; margin-bottom: 20px; }
+    #logo img { max-width: 180px; }
+    h2 { font-size: 18px; margin: 20px 0 10px; color: #0052cc; border-bottom: 1px solid #e1e1e1; padding-bottom: 5px; }
+    .section { margin-bottom: 15px; }
+    .field { margin-bottom: 10px; }
+    label { display: block; font-weight: 500; margin-bottom: 5px; }
+    select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+    .grid-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .checkbox-row { display: flex; align-items: center; margin-bottom: 8px; }
+    .checkbox-row input { margin-right: 8px; }
     button {
-      background: #ffd700; color: #0a1a2f; font-weight: bold; cursor: pointer; margin-top: 18px;
+      width: 100%; padding: 10px; margin-top: 10px;
+      border: none; border-radius: 4px;
+      background: #0052cc; color: #fff; font-size: 14px; cursor: pointer;
+      transition: background 0.2s;
     }
+    button:hover { background: #003d99; }
     #adviceBox {
-      position: absolute; bottom: 10px; right: 10px; width: 370px; max-height: 48%;
-      overflow-y: auto; background: rgba(0,0,0,0.88); color: white;
-      padding: 15px; border-radius: 13px; z-index: 999; font-size: 16px;
-      box-shadow: 0 0 18px 0 rgba(32,34,72,0.16);
+      position: absolute; bottom: 20px; right: 20px; width: 280px;
+      background: rgba(255,255,255,0.95); color: #333;
+      padding: 15px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      font-size: 14px; line-height: 1.4;
     }
-    .marker-selected { filter: drop-shadow(0 0 10px #ffd700); }
-    .conflict { color: #ff5252; font-weight: bold; }
-    .saving { color: #4caf50; font-weight: bold; }
-    .route-step { margin-bottom: 7px; }
-    .flex { display: flex; align-items: center; }
-    .region { font-size:13px; color: #72e1ff; margin-left: 6px;}
-    .checkbox-row { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
+    ul { margin: 8px 0 0 16px; padding: 0; }
   </style>
 </head>
 <body>
   <div id="sidebar">
     <div id="logo">
-      <img src="ChatGPT Image 23 jul 2025, 20_18_11 (1).png" alt="Voltsmart Logo">
+      <img src="https://cdn.prod.website-files.com/68503ddc6fb75a92cad47e2a/686c04721a3b9d5a4dc5c9a0_Group%2032%20(1).svg" alt="Voltsmart Logo">
     </div>
-    <h2>Afspraken & Instellingen</h2>
-    <label for="date-filter">Datum:</label>
-    <select id="date-filter"></select>
-
-    <h2>Afspraakduur per Operator</h2>
-    <label>Roelof (👨‍🌾): <select id="duration-roelof"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></label>
-    <label>Jesse (🚀): <select id="duration-jesse"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></label>
-    <label>Chanice (✨): <select id="duration-chanice"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></label>
-    <label>Karlijn (🌸): <select id="duration-karlijn"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></label>
-    <label>Keith (🟡): <select id="duration-keith"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></label>
-    <label>Gio (👑): <select id="duration-gio"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></label>
-
-    <h2>Beschikbaarheid medewerkers</h2>
-    <div id="availability"></div>
-
+    <div class="section">
+      <h2>Afspraken & Instellingen</h2>
+      <div class="field">
+        <label for="date-filter">Datum</label>
+        <select id="date-filter"></select>
+      </div>
+    </div>
+    <div class="section">
+      <h2>Afspraakduur per Operator</h2>
+      <div class="grid-two">
+        <div class="field"><label for="duration-roelof">Roelof (👨‍🌾)</label><select id="duration-roelof"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></div>
+        <div class="field"><label for="duration-jesse">Jesse (🚀)</label><select id="duration-jesse"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></div>
+        <div class="field"><label for="duration-chanice">Chanice (✨)</label><select id="duration-chanice"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></div>
+        <div class="field"><label for="duration-karlijn">Karlijn (🌸)</label><select id="duration-karlijn"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></div>
+        <div class="field"><label for="duration-keith">Keith (🟡)</label><select id="duration-keith"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></div>
+        <div class="field"><label for="duration-gio">Gio (👑)</label><select id="duration-gio"><option>30</option><option>45</option><option selected>60</option><option>90</option></select></div>
+      </div>
+    </div>
+    <div class="section">
+      <h2>Beschikbaarheid medewerkers</h2>
+      <div id="availability"></div>
+    </div>
     <button onclick="resetSelection()">🔄 Reset selectie</button>
     <button onclick="planRoute()">🚗 Bereken route & advies</button>
   </div>
-
   <div id="map"></div>
   <div id="adviceBox">
     <strong>Klik minimaal twee afspraken op de kaart, klik daarna op 'Bereken route & advies'.</strong>
   </div>
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDTvDRPKBT7KDONeDgekEXlN1_CMZUtX4U&callback=initMap" async defer></script>
-<script>
-/* ------------- CONFIG & HELPERS ------------- */
-const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv";
-const OPERATOR_EMOJI = { Roelof: "👨‍🌾", Jesse: "🚀", Chanice: "✨", Karlijn: "🌸", Keith: "🟡", Gio: "👑" };
-const OPERATOR_HOME_ADDRESS = {
-  Roelof: "Hemelrijk 9, Puiflijk",
-  Chanice: "Harddraverstraat 32A, 3033 XL Rotterdam",
-  Gio: "Savelsbos 304, 2716 HR Zoetermeer",
-  Karlijn: "Spitael 92, 9202 HG Drachten",
-  Jesse: "Kalf 406, 1509 BE Zaandam"
-};
-const KM_COST = 0.21, TIME_COST = 35;
-let map, directionsService, directionsRenderer;
-let appointments = [], markers = [], selectedMarkers = [], filteredAppointments = [];
-let medewerkerBeschikbaar = { Roelof: true, Jesse: true, Chanice: true, Karlijn: true, Keith: true, Gio: true };
-let geocodedHomes = {};
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDTvDRPKBT7KDONeDgekEXlN1_CMZUtX4U&callback=initMap" async defer></script>
+  <script>
+    // CONFIG & HELPERS
+    const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrfGrf...pub?output=csv";
+    const OPERATOR_EMOJI = { Roelof: "👨‍🌾", Jesse: "🚀", Chanice: "✨", Karlijn: "🌸", Keith: "🟡", Gio: "👑" };
+    const OPERATOR_HOME_ADDRESS = {
+      Roelof: "Hemelrijk 9, Puiflijk",
+      Chanice: "Harddraverstraat 32A, 3033 XL Rotterdam",
+      Gio: "Savelsbos 304, 2716 HR Zoetermeer",
+      Karlijn: "Spitael 92, 9202 HG Drachten",
+      Jesse: "Kalf 406, 1509 BE Zaandam",
+      Keith: "Jouw Straatnaam 123, 1234 AB JouwPlaats"
+    };
+    const KM_COST = 0.21, TIME_COST = 35;
+    let map, directionsService, directionsRenderer;
+    let appointments = [], markers = [], selectedMarkers = [], filteredAppointments = [];
+    let medewerkerBeschikbaar = { Roelof: true, Jesse: true, Chanice: true, Karlijn: true, Keith: true, Gio: true };
+    let geocodedHomes = {};
 
-/* ------------ INIT ------------ */
-function initMap() {
-  map = new google.maps.Map(document.getElementById("map"), { center: { lat: 52.1, lng: 5.1 }, zoom: 7, mapTypeId: "roadmap" });
-  directionsService = new google.maps.DirectionsService();
-  directionsRenderer = new google.maps.DirectionsRenderer({ map: map, suppressMarkers: true });
-  fetchAppointments();
-  renderBeschikbaarheidsCheckboxen();
-}
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), { center: { lat: 52.1, lng: 5.1 }, zoom: 7 });
+      directionsService = new google.maps.DirectionsService();
+      directionsRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers: true });
+      fetchAppointments(); renderBeschikbaarheidsCheckboxen();
+    }
 
-/* ------------ DATA & MARKERS ------------ */
-function fetchAppointments() {
-  fetch(SHEET_URL)
-    .then(r => r.text())
-    .then(csv => {
-      const rows = csv.split("\n").slice(1);
-      appointments = [];
-      rows.forEach(row => {
-        const [datum, medewerker, klant, adres, status, tijd, , , lat, lon] = row.split(",");
-        if (lat && lon && !isNaN(parseFloat(lat))) {
-          appointments.push({ datum, medewerker, klant, adres, status, tijd, lat: parseFloat(lat), lon: parseFloat(lon) });
-        }
+    function fetchAppointments() {
+      fetch(SHEET_URL).then(r=>r.text()).then(csv=>{
+        appointments = csv.split("\n").slice(1).map(row => {
+          const [datum, medewerker, klant, adres, status, tijd, , , lat, lon] = row.split(",");
+          return { datum, medewerker, klant, adres, status, tijd, lat: parseFloat(lat), lon: parseFloat(lon) };
+        }).filter(a => !isNaN(a.lat));
+        fillDateFilter(); showMarkersForDate(getSelectedDate());
       });
-      fillDateFilter();
-      showMarkersForDate(getSelectedDate());
-    });
-}
+    }
 
-function fillDateFilter() {
-  const sel = document.getElementById("date-filter"); sel.innerHTML = "";
-  const dates = [...new Set(appointments.map(a => a.datum))].filter(d => d).sort((a,b)=>new Date(a)-new Date(b));
-  dates.forEach(date => sel.innerHTML += `<option value="${date}">${date}</option>`);
-  const today = new Date().toISOString().slice(0,10);
-  sel.value = dates.find(d => d >= today) || dates[0];
-  sel.onchange = () => showMarkersForDate(sel.value);
-}
+    function fillDateFilter() {
+      const sel = document.getElementById("date-filter");
+      const dates = [...new Set(appointments.map(a=>a.datum))].filter(d=>d).sort((a,b)=>new Date(a)-new Date(b));
+      sel.innerHTML = dates.map(d=>`<option>${d}</option>`).join("");
+      sel.value = dates.find(d=>d>=new Date().toISOString().slice(0,10)) || dates[0];
+      sel.onchange = () => showMarkersForDate(sel.value);
+    }
 
-function getSelectedDate() { return document.getElementById("date-filter").value; }
+    function getSelectedDate(){ return document.getElementById("date-filter").value; }
 
-function showMarkersForDate(date) {
-  markers.forEach(m => m.setMap(null)); markers = []; selectedMarkers = [];
-  filteredAppointments = appointments.filter(a=>a.datum===date);
-  if (!filteredAppointments.length) return;
-  filteredAppointments.forEach(a => {
-    const marker = new google.maps.Marker({
-      position: { lat: a.lat, lng: a.lon }, map, title: `${a.medewerker} – ${a.klant} (${a.tijd})`,
-      label: { text: OPERATOR_EMOJI[a.medewerker]||"📍", fontSize: "20px" }
-    });
-    marker.metadata = a;
-    marker.addListener("click", ()=>toggleSelect(marker));
-    markers.push(marker);
-  });
-  const bounds = new google.maps.LatLngBounds(); markers.forEach(m=>bounds.extend(m.getPosition())); map.fitBounds(bounds);
-  document.getElementById("adviceBox").innerHTML = "<strong>Klik minimaal twee afspraken op de kaart, klik daarna op 'Bereken route & advies'.</strong>";
-}
-
-function toggleSelect(marker) {
-  if(selectedMarkers.includes(marker)) {
-    marker.setAnimation(null);
-    marker.label = { text: OPERATOR_EMOJI[marker.metadata.medewerker]||"📍", fontSize: "20px" };
-    selectedMarkers = selectedMarkers.filter(m=>m!==marker);
-  } else {
-    marker.setAnimation(google.maps.Animation.BOUNCE);
-    selectedMarkers.push(marker);
-  }
-}
-
-function resetSelection() {
-  selectedMarkers.forEach(m=>m.setAnimation(null)); selectedMarkers=[];
-  directionsRenderer.set("directions", null);
-  document.getElementById("adviceBox").innerHTML = "<strong>Klik minimaal twee afspraken op de kaart, klik daarna op 'Bereken route & advies'.</strong>";
-}
-
-function renderBeschikbaarheidsCheckboxen() {
-  const div = document.getElementById("availability"); div.innerHTML="";
-  Object.keys(OPERATOR_HOME_ADDRESS).forEach(naam=>{
-    div.innerHTML += `<div class="checkbox-row"><input type="checkbox" id="chk_${naam}" checked onchange="toggleBeschikbaarheid('${naam}')"/><label for="chk_${naam}">${naam} (${OPERATOR_EMOJI[naam]||''})</label></div>`;
-  });
-}
-function toggleBeschikbaarheid(naam) { medewerkerBeschikbaar[naam] = document.getElementById(`chk_${naam}`).checked; }
-
-/* ------------ ROUTE & ADVIES ------------ */
-function planRoute() {
-  if (selectedMarkers.length < 2) {
-    document.getElementById("adviceBox").innerHTML = "<strong>Klik minimaal twee afspraken op de kaart, klik daarna op 'Bereken route & advies'.</strong>";
-    return;
-  }
-  adviseerBesteMedewerkerVoorSelectie();
-}
-
-async function adviseerBesteMedewerkerVoorSelectie() {
-  document.getElementById("adviceBox").innerHTML = "<b>Route-advies wordt berekend...</b>";
-  await geocodeAllHomes();
-  let bestMedewerker = null, bestCost = Infinity, bestResult = null;
-  let bestDistance=0, bestTime=0;
-  for (let naam in OPERATOR_HOME_ADDRESS) {
-    if (!medewerkerBeschikbaar[naam]) continue;
-    const points = [geocodedHomes[naam], ...selectedMarkers.map(m=>({ lat: m.metadata.lat, lng: m.metadata.lon }))];
-    let result;
-    try { result = await directionsPromise(points); }
-    catch(e) { continue; }
-    if (result && result.routes.length) {
-      let totaalAfstand=0, totaalTijd=0;
-      result.routes[0].legs.forEach(leg=>{
-        totaalAfstand += leg.distance.value/1000;
-        totaalTijd += ((leg.duration_in_traffic||leg.duration).value)/60;
+    function showMarkersForDate(date){
+      markers.forEach(m=>m.setMap(null)); markers=[]; selectedMarkers=[];
+      filteredAppointments = appointments.filter(a=>a.datum===date);
+      if(!filteredAppointments.length) return;
+      filteredAppointments.forEach(a=>{
+        const m = new google.maps.Marker({ position:{lat:a.lat,lng:a.lon}, map,
+          title:`${a.medewerker} – ${a.klant} (${a.tijd})`, label:{text:OPERATOR_EMOJI[a.medewerker],fontSize:"20px"}
+        }); m.metadata=a; m.addListener("click",()=>toggleSelect(m)); markers.push(m);
       });
-      const cost = totaalAfstand * KM_COST + (totaalTijd/60) * TIME_COST;
-      if (cost < bestCost) {
-        bestCost = cost; bestMedewerker = naam; bestResult = result;
-        bestDistance = totaalAfstand; bestTime = totaalTijd;
+      const bounds=new google.maps.LatLngBounds(); markers.forEach(m=>bounds.extend(m.getPosition())); map.fitBounds(bounds);
+      document.getElementById("adviceBox").innerHTML="<strong>Klik minimaal twee afspraken...</strong>";
+    }
+
+    function toggleSelect(m){
+      if(selectedMarkers.includes(m)) { m.setAnimation(null); selectedMarkers=selectedMarkers.filter(x=>x!==m); }
+      else { m.setAnimation(google.maps.Animation.BOUNCE); selectedMarkers.push(m); }
+    }
+
+    function resetSelection(){
+      selectedMarkers.forEach(m=>m.setAnimation(null)); selectedMarkers=[];
+      directionsRenderer.setDirections({routes:[]});
+      document.getElementById("adviceBox").innerHTML="<strong>Klik minimaal twee afspraken...</strong>";
+    }
+
+    function renderBeschikbaarheidsCheckboxen(){
+      const div=document.getElementById("availability"); div.innerHTML="";
+      Object.keys(OPERATOR_HOME_ADDRESS).forEach(n=>{
+        div.innerHTML+=`<div class="checkbox-row"><input type="checkbox" id="chk_${n}" checked onchange="toggleBeschikbaarheid('${n}')"><label for="chk_${n}">${n} (${OPERATOR_EMOJI[n]})</label></div>`;
+      });
+    }
+    function toggleBeschikbaarheid(n){ medewerkerBeschikbaar[n]=!medewerkerBeschikbaar[n]; }
+
+    function planRoute(){ if(selectedMarkers.length<2){ alert('Selecteer minimaal twee afspraken.'); return; } adviseer(); }
+
+    async function adviseer(){
+      document.getElementById("adviceBox").textContent = 'Route advies wordt berekend…';
+      await geocodeHomes();
+      let best={cost:Infinity}, result;
+      for(let n in OPERATOR_HOME_ADDRESS){ if(!medewerkerBeschikbaar[n]) continue;
+        const pts=[geocodedHomes[n],...selectedMarkers.map(m=>({lat:m.metadata.lat,lng:m.metadata.lon}))];
+        try{ result=await routePromise(pts); }catch{continue;}
+        const leg=result.routes[0].legs.reduce((sum,leg)=>({dist:sum.dist+leg.distance.value/1000,time:sum.time+leg.duration.value/60}),{dist:0,time:0});
+        const cost=leg.dist*KM_COST + (leg.time/60)*TIME_COST;
+        if(cost<best.cost) best={name:n,emoji:OPERATOR_EMOJI[n],route:result,dist:leg.dist,time:leg.time,cost};
+      }
+      if(best.name){
+        directionsRenderer.setDirections(best.route);
+        document.getElementById("adviceBox").innerHTML = `<strong>Medewerker: ${best.emoji} ${best.name}</strong><ul>`+
+          `<li>Stops: ${selectedMarkers.length}</li>`+
+          `<li>Afstand: ${best.dist.toFixed(1)} km</li>`+
+          `<li>Tijd: ${Math.round(best.time)} min</li>`+
+          `<li>Kosten: €${Math.round(best.cost)}</li>`+`</ul>`;
+      } else document.getElementById("adviceBox").textContent='Geen medewerker gevonden.';
+    }
+
+    function routePromise(pts){
+      return new Promise((res,rej)=>{
+        directionsService.route({ origin:pts[0], destination:pts.pop(), waypoints:pts.slice(1).map(p=>({location:p,stopover:true})),
+          travelMode:'DRIVING', optimizeWaypoints:true, drivingOptions:{departureTime:new Date(),trafficModel:'bestguess'}
+        },(r,s)=>s==='OK'?res(r):rej(s));
+      });
+    }
+
+    async function geocodeHomes(){
+      const geo=new google.maps.Geocoder();
+      for(let n in OPERATOR_HOME_ADDRESS){ if(!geocodedHomes[n]){
+          geocodedHomes[n]=await new Promise(r=>geo.geocode({address:OPERATOR_HOME_ADDRESS[n]},(res,st)=>(r(st==='OK'?{lat:res[0].geometry.location.lat(),lng:res[0].geometry.location.lng()}:{lat:52.1,lng:5.1}))); }
       }
     }
-  }
-  if (bestMedewerker) {
-    const emoji = OPERATOR_EMOJI[bestMedewerker]||'';
-    document.getElementById("adviceBox").innerHTML = `<b>Beste medewerker: ${emoji} <strong>${bestMedewerker}</strong><br>Route: ${selectedMarkers.length} stops, ±${bestDistance.toFixed(1)} km, ${Math.round(bestTime)} min, indicatief €${Math.round(bestCost)}</b>`;
-    directionsRenderer.set("directions", bestResult);
-  } else {
-    document.getElementById("adviceBox").innerHTML = "<b>Geen beschikbare medewerker gevonden voor deze route.</b>";
-  }
-}
-
-function directionsPromise(points) {
-  return new Promise((resolve, reject) => {
-    if(points.length<2) return reject(new Error("Te weinig punten voor route"));
-    const origin=points[0], destination=points[points.length-1];
-    const waypoints = points.slice(1,-1).map(p=>({ location: p, stopover:true }));
-    directionsService.route({ origin, destination, waypoints, travelMode: google.maps.TravelMode.DRIVING, drivingOptions:{ departureTime: new Date(), trafficModel:"bestguess" } },
-      (result,status)=> status==="OK" ? resolve(result) : reject(new Error(status))
-    );
-  });
-}
-
-async function geocodeAllHomes() {
-  for(let naam in OPERATOR_HOME_ADDRESS) {
-    if(!geocodedHomes[naam]) {
-      geocodedHomes[naam] = await geocodeAddress(OPERATOR_HOME_ADDRESS[naam]);
-    }
-  }
-}
-function geocodeAddress(address) {
-  return new Promise((resolve) => {
-    new google.maps.Geocoder().geocode({ address }, (results, status) => {
-      if(status==="OK"&&results[0]) {
-        const loc = results[0].geometry.location;
-        resolve({ lat: loc.lat(), lng: loc.lng() });
-      } else resolve({ lat:52.1,lng:5.1 });
-    });
-  });
-}
-</script>
+  </script>
 </body>
 </html>
