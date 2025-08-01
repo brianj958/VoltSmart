@@ -27,7 +27,7 @@
 </head>
 <body>
   <div id="header">
-    <img src="https://yourdomain.com/voltsmart-logo.png" alt="Voltsmart Logo">
+    <img src="https://contrackt-prod.s3.eu-central-1.amazonaws.com/voltsmart_logo.png" alt="Voltsmart Logo">
   </div>
   <div id="map"></div>
   <div id="bottom-bar">
@@ -118,7 +118,22 @@
       const bounds = new google.maps.LatLngBounds(); items.forEach(a=>bounds.extend(a.loc)); map.fitBounds(bounds);
     }
 
-    // calculateAdvice function remains unchanged
+    async function calculateAdvice(){
+      const date = $('date-filter').value;
+      const filtered = appointments.filter(a=>a.date===date).sort((a,b)=>a.time.localeCompare(b.time));
+      if(!filtered.length){ $('adviceBox').innerHTML=`<strong>Geen afspraken voor ${date}</strong>`; return; }
+      const ops = Object.keys(EMOJI).filter(o=> availability[o] && HOME[o]); if(!ops.length){ $('adviceBox').innerHTML=`<strong>Geen beschikbare medewerkers</strong>`; return; }
+      const assign={}, cursors={}, totalTime={}, totalDist={}; ops.forEach(o=>{ assign[o]=[]; cursors[o]=new Date(`${date}T${filtered[0].time}:00`); totalTime[o]=0; totalDist[o]=0; });
+      if(Object.keys(homeLocs).length!==ops.length){ const geocoder=new google.maps.Geocoder(); for(const o of ops){ if(!homeLocs[o]){ const res=await new Promise(r=>geocoder.geocode({address:HOME[o]},r)); homeLocs[o]=res[0].geometry.location; } } }
+      let adviceHtml=`<strong>Advies voor ${date}:</strong><br><ul>`;
+      for(const app of filtered){ let bestOp=null,bestScore=Infinity,bestArrival=null,bestLeg=null; for(const op of ops){ const origin=assign[op].length?assign[op].slice(-1)[0].loc:homeLocs[op]; const depart=cursors[op]; const {travelMs,distanceM,leg}=await new Promise(r=>ds.route({ origin,destination:app.loc,travelMode:'DRIVING',drivingOptions:{departureTime:depart,trafficModel:'bestguess'} },resp=>{const lg=resp.routes[0].legs[0];const secs=lg.duration_in_traffic?.value||lg.duration.value;r({travelMs:secs*1000,distanceM:lg.distance.value,leg:lg});})); const arrival=new Date(depart.getTime()+travelMs); const scheduled=new Date(`${app.date}T${app.time}:00`); const delay=arrival>scheduled?(arrival-scheduled)/60000:0; const score=travelMs+delay*60000; if(score<bestScore){ bestScore=score; bestOp=op; bestArrival=arrival; bestLeg={travelMs,distanceM}; } } const sched=new Date(`${app.date}T${app.time}:00`); if(bestArrival>sched){ adviceHtml+=`<li>${EMOJI[bestOp]} ${bestOp} - verplaats ${app.client} om ${app.time} naar ${bestArrival.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</li>`; } else { adviceHtml+=`<li>${EMOJI[bestOp]} ${bestOp} - plan ${app.client} om ${app.time}</li>`; } assign[bestOp].push({loc:app.loc}); totalTime[bestOp]+=bestLeg.travelMs; totalDist[bestOp]+=bestLeg.distanceM; const next=new Date(bestArrival.getTime()); next.setMinutes(next.getMinutes()+durations[bestOp]+BUFFER_MIN); cursors[bestOp]=next; }
+      adviceHtml+='</ul><br><strong>Totaal per medewerker:</strong><ul>';
+      ops.forEach(op=>{ const t=totalTime[op], hr=Math.floor(t/3600000), mn=Math.round((t%3600000)/60000), km=(totalDist[op]/1000).toFixed(1); adviceHtml+=`<li>${EMOJI[op]} ${op}: ${hr}u ${mn}m reistijd, ${km} km</li>`; });
+      adviceHtml+='</ul>';
+      $('adviceBox').innerHTML=adviceHtml;
+    }
+
+    // Start applicatie
     init();
   </script>
 </body>
