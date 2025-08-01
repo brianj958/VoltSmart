@@ -8,8 +8,8 @@
     html, body { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; background: #0a1a2f; color: #fff; }
     #sidebar { position: absolute; top: 0; left: 0; width: 360px; height: 100%; background: rgba(10,20,40,0.95); overflow-y: auto; padding: 20px; box-sizing: border-box; }
     #map { position: absolute; top: 0; left: 360px; right: 0; bottom: 0; }
-    h2 { color: #ffd700; margin-top: 20px; font-size: 20px; text-transform: uppercase; letter-spacing: 1px; }
-    select, button { width: 100%; padding: 10px; margin-top: 8px; border: none; border-radius: 6px; font-size: 14px; }
+    h2 { color: #ffd700; margin-top: 20px; font-size: 18px; text-transform: uppercase; letter-spacing: 1px; }
+    select, button { width: 100%; padding: 8px; margin-top: 10px; border: none; border-radius: 4px; font-size: 14px; }
     select { background: #1b2e4a; color: #fff; }
     button { background: #ffd700; color: #0a1a2f; font-weight: bold; transition: background 0.3s; }
     button:hover { background: #e6c300; }
@@ -30,84 +30,168 @@
   <div id="sidebar">
     <h2>Datum</h2>
     <select id="date-filter"></select>
-
     <h2>Operators & Duur</h2>
     <div id="legend"></div>
     <div id="durations"></div>
-
     <h2>Afspraken</h2>
     <div id="appointments-list"></div>
-
     <button id="reset-btn">🔄 Reset selectie</button>
     <button id="advise-btn">🚗 Bereken Advies</button>
   </div>
-
   <div id="map"></div>
-  <div id="adviceBox"><strong>Kies datum en klik 'Bereken Advies'.</strong></div>
-
+  <div id="adviceBox"><strong>Kies afspraken en klik 'Bereken Advies'.</strong></div>
   <script>
-    window.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', () => {
+      const getEl = id => document.getElementById(id);
       const API_KEY = 'AIzaSyDTvDRPKBT7KDONeDgekEXlN1_CMZUtX4U';
-      const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv';
-      const EMP = { Roelof:'👨‍🌾', Jesse:'🚀', Chanice:'✨', Karlijn:'🌸', Keith:'🟡', Gio:'👑' };
-      const TEAMS = Object.keys(EMP);
+      const SHEET_URL = '<YOUR_SHEET_CSV_URL>';
+      const EMOJI = { Roelof:'👨‍🌾', Jesse:'🚀', Chanice:'✨', Karlijn:'🌸', Keith:'🟡', Gio:'👑' };
+      const TEAMS = Object.keys(EMOJI);
       const BUFFER = 15;
-      const ORIGIN = { lat:52.1326, lng:5.2913 }, ZOOM=7;
+      const DEFAULT_CENTER = { lat:52.1326, lng:5.2913 };
+      const ZOOM = 8;
 
-      let map, ds;
-      let apps=[], markers=[], sel=[];
-      let avail={}, times={}, dates=[];
+      let map, directionsService;
+      let appointments = [], markers = [], selected = [];
+      let availability = {}, durations = {}, dates = [];
 
-      // Load Maps API
-      const s=document.createElement('script'); s.src=`https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=initMap`; s.async=true; document.head.append(s);
+      // Load Google Maps
+      const gm = document.createElement('script');
+      gm.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=initMap`;
+      gm.async = true;
+      document.head.appendChild(gm);
 
       window.initMap = () => {
-        map=new google.maps.Map(document.getElementById('map'),{center:ORIGIN,zoom:ZOOM});
-        ds=new google.maps.DirectionsService();
-        buildUI(); fetchApps();
+        map = new google.maps.Map(getEl('map'), { center: DEFAULT_CENTER, zoom: ZOOM });
+        directionsService = new google.maps.DirectionsService();
+        initUI();
+        loadAppointments();
       };
 
-      function buildUI(){
-        const lg=document.getElementById('legend'), dr=document.getElementById('durations'); lg.innerHTML=''; dr.innerHTML='';
-        TEAMS.forEach(t=>{ avail[t]=true; times[t]=60;
-          const lr=document.createElement('div'); lr.className='legend-row';
-          const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=true; cb.onchange=()=>avail[t]=cb.checked;
-          const lbl=document.createElement('label'); lbl.textContent=EMP[t]+' '+t;
-          lr.append(cb,lbl); lg.append(lr);
-
-          const drw=document.createElement('div'); drw.className='duration-row';
-          const lt=document.createElement('label'); lt.textContent=t+' duur';
-          const sel=document.createElement('select'); [60,90].forEach(v=>sel.append(new Option(v+'m',v)));
-          sel.value=60; sel.onchange=()=>times[t]=+sel.value;
-          drw.append(lt,sel); dr.append(drw);
+      function initUI() {
+        // Legend & durations
+        const legend = getEl('legend'), durDiv = getEl('durations');
+        legend.innerHTML = '';
+        durDiv.innerHTML = '';
+        TEAMS.forEach(team => {
+          availability[team] = true;
+          durations[team] = 60;
+          const row = document.createElement('div'); row.className = 'legend-row';
+          const chk = document.createElement('input'); chk.type = 'checkbox'; chk.checked = true;
+          chk.onchange = () => availability[team] = chk.checked;
+          const lbl = document.createElement('label'); lbl.textContent = `${EMOJI[team]} ${team}`;
+          row.append(chk, lbl);
+          legend.appendChild(row);
+          const drow = document.createElement('div'); drow.className = 'duration-row';
+          const dlbl = document.createElement('label'); dlbl.textContent = `${team} duur`;
+          const sel = document.createElement('select'); [60,90].forEach(m => sel.append(new Option(`${m}m`, m)));
+          sel.value = durations[team]; sel.onchange = () => durations[team] = +sel.value;
+          drow.append(dlbl, sel);
+          durDiv.appendChild(drow);
         });
-        document.getElementById('reset-btn').onclick=reset;
-        document.getElementById('advise-btn').onclick=advise;
+        getEl('reset-btn')?.addEventListener('click', resetSelection);
+        getEl('advise-btn')?.addEventListener('click', calculateAdvice);
+        getEl('date-filter')?.addEventListener('change', e => renderAppointments(e.target.value));
       }
 
-      async function fetchApps(){
-        const txt=await fetch(SHEET_URL).then(r=>r.text());
-        apps=txt.split('\n').slice(1).map((r,i)=>{const c=r.split(',');const d=c[0],o=c[1],cl=c[2],ti=c[5];const la=parseFloat(c[8]),ln=parseFloat(c[9]);return la&&ln?{id:i,date:d,op:o,client:cl,time:ti,loc:{lat:la,lng:ln}}:null;}).filter(x=>x);
-        dates=[...new Set(apps.map(a=>a.date))].sort();
-        const df=document.getElementById('date-filter'); df.innerHTML='';
-        dates.forEach(d=>df.append(new Option(d,d))); df.onchange=()=>display(df.value);
-        display(dates[0]);
+      async function loadAppointments() {
+        const text = await fetch(SHEET_URL).then(r => r.text());
+        appointments = text.split('\n').slice(1).map((row,i) => {
+          const cols = row.split(',');
+          const [date, op, client,, , time,,, lat, lng] = cols;
+          const la = parseFloat(lat), ln = parseFloat(lng);
+          if (!date || !EMOJI[op] || isNaN(la) || isNaN(ln)) return null;
+          return { id: i, date, op, client, time, loc: { lat: la, lng: ln } };
+        }).filter(Boolean);
+        dates = [...new Set(appointments.map(a => a.date))].sort();
+        const df = getEl('date-filter');
+        df.innerHTML = '';
+        dates.forEach(d => df.append(new Option(d,d)));
+        renderAppointments(dates[0]);
       }
 
-      function display(date){clearMap();
-        const lst=document.getElementById('appointments-list'); lst.innerHTML='';
-        apps.filter(a=>a.date===date).sort((a,b)=>a.time.localeCompare(b.time)).forEach(a=>{
-          const di=document.createElement('div'); di.className='appointment-item';
-          const cb=document.createElement('input'); cb.type='checkbox'; cb.onchange=()=>toggle(a.id);
-          const lb=document.createElement('label'); lb.textContent=`${a.time} ${EMP[a.op]} ${a.op} - ${a.client}`;
-          di.append(cb,lb); lst.append(di);
-          const mk=new google.maps.Marker({position:a.loc,map,label:{text:EMP[a.op],fontSize:'20px'}}); mk.meta=a; mk.addListener('click',()=>toggle(a.id)); markers.push(mk);
-        }); fit(); }
-      function clearMap(){markers.forEach(m=>m.setMap(null));markers=[];sel=[]; document.getElementById('appointments-list').innerHTML='';}
-      function toggle(id){const m=markers.find(x=>x.meta.id===id);if(!m)return;const i=sel.indexOf(m);i>-1? (m.setIcon(),sel.splice(i,1)):(m.setIcon('http://maps.google.com/mapfiles/ms/icons/green-dot.png'),sel.push(m));}
-      function fit(){if(markers.length){const b=new google.maps.LatLngBounds();markers.forEach(m=>b.extend(m.getPosition()));map.fitBounds(b);}else map.setCenter(ORIGIN),map.setZoom(ZOOM);}      
-      function reset(){sel.forEach(m=>m.setIcon());sel=[];document.querySelectorAll('#appointments-list input').forEach(cb=>cb.checked=false);fit();}
-      async function advise(){if(!sel.length)return;const date=document.getElementById('date-filter').value;const base=apps.filter(a=>a.date===date);const ops=TEAMS.filter(t=>avail[t]);const asg={};ops.forEach(t=>asg[t]=[]);base.forEach((a,i)=>asg[ops[i%ops.length]].push(a));let h='<b>Advies:</b><ul>';for(const t of ops){const ls=asg[t];if(!ls.length)continue;ls.sort((a,b)=>a.time.localeCompare(b.time));let cur=new Date(`${date}T${ls[0].time}:00`);cur.setMinutes(cur.getMinutes()+times[t]);const cf=[];for(let i=1;i<ls.length;i++){const arr=await new Promise(r=>ds.route({origin:ls[i-1].loc,destination:ls[i].loc,travelMode:'DRIVING',drivingOptions:{departureTime:cur,trafficModel:'bestguess'}},res=>r(new Date(cur.getTime()+res.routes[0].legs[0].duration_in_traffic.value*1000))));const nx=new Date(`${date}T${ls[i].time}:00`);if(arr>nx)cf.push({time:ls[i].time,sugg:arr});cur=new Date(nx);cur.setMinutes(cur.getMinutes()+times[t]);}if(cf.length){h+=`<li>${EMP[t]} <strong>${t}</strong> conflicts:${cf.length}`;cf.forEach(c=>h+=`<br>–${c.time}→${c.sugg.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`);h+='</li>';}else h+=`<li>${EMP[t]} <strong>${t}</strong> ok</li>`;}h+='</ul>';document.getElementById('adviceBox').innerHTML=h;}
+      function renderAppointments(date) {
+        // Clear
+        markers.forEach(m => m.setMap(null));
+        markers = []; selected = [];
+        const list = getEl('appointments-list'); list.innerHTML = '';
+        // Filter by date
+        const todays = appointments.filter(a => a.date === date).sort((a,b) => a.time.localeCompare(b.time));
+        todays.forEach(app => {
+          const item = document.createElement('div'); item.className = 'appointment-item';
+          const cb = document.createElement('input'); cb.type='checkbox'; cb.onchange = () => toggleSelection(app.id);
+          const lbl = document.createElement('label'); lbl.textContent = `${app.time} ${EMOJI[app.op]} ${app.op} - ${app.client}`;
+          item.append(cb, lbl); list.appendChild(item);
+          const marker = new google.maps.Marker({ position: app.loc, map, label:{text:EMOJI[app.op],fontSize:'20px'} });
+          marker.app = app;
+          marker.addListener('click', () => toggleSelection(app.id));
+          markers.push(marker);
+        });
+        fitMap();
+        getEl('adviceBox').innerHTML = `<strong>Kies afspraken en klik 'Bereken Advies'.</strong>`;
+      }
+
+      function toggleSelection(id) {
+        const marker = markers.find(m => m.app.id === id);
+        if (!marker) return;
+        const idx = selected.indexOf(marker);
+        if (idx > -1) {
+          marker.setIcon(null);
+          selected.splice(idx,1);
+        } else {
+          marker.setIcon('http://maps.google.com/mapfiles/ms/icons/green-dot.png');
+          selected.push(marker);
+        }
+      }
+
+      function fitMap() {
+        if (!markers.length) {
+          map.setCenter(DEFAULT_CENTER);
+          map.setZoom(ZOOM);
+          return;
+        }
+        const bounds = new google.maps.LatLngBounds();
+        markers.forEach(m=>bounds.extend(m.getPosition()));
+        map.fitBounds(bounds);
+      }
+
+      function resetSelection() {
+        selected.forEach(m=>m.setIcon(null));
+        document.querySelectorAll('#appointments-list input[type=checkbox]').forEach(cb=>cb.checked=false);
+        selected = [];
+        fitMap();
+        getEl('adviceBox').innerHTML = `<strong>Kies afspraken en klik 'Bereken Advies'.</strong>`;
+      }
+
+      async function calculateAdvice() {
+        const adviceBox = getEl('adviceBox');
+        if (!selected.length) {
+          adviceBox.innerHTML = `<strong>Geen afspraak geselecteerd. Selecteer er minstens één om advies te krijgen.</strong>`;
+          return;
+        }
+        const groups = {};
+        selected.map(m=>m.app).sort((a,b)=>a.time.localeCompare(b.time)).forEach(app=>{groups[app.op]=groups[app.op]||[];groups[app.op].push(app);});
+        let html = '<b>Advies per operator:</b><ul>';
+        for (const op in groups) {
+          const listApps = groups[op];
+          let cursor = new Date(`${listApps[0].date}T${listApps[0].time}:00`);
+          cursor.setMinutes(cursor.getMinutes() + durations[op] || 60);
+          const conflicts = [];
+          for (let i=1; i<listApps.length; i++) {
+            const prev=listApps[i-1], curr=listApps[i];
+            const travelEnd = await new Promise(r => directionsService.route({ origin:prev.loc, destination:curr.loc, travelMode:'DRIVING', drivingOptions:{departureTime:cursor,trafficModel:'bestguess'} }, res=>{ const ms=res.routes[0].legs[0].duration_in_traffic.value*1000; r(new Date(cursor.getTime()+ms+BUFFER*60000)); }));
+            const nextStart = new Date(`${curr.date}T${curr.time}:00`);
+            if (travelEnd > nextStart) conflicts.push({time:curr.time,suggest:travelEnd});
+            cursor = new Date(nextStart); cursor.setMinutes(cursor.getMinutes()+durations[op]||60);
+          }
+          html += `<li>${EMOJI[op]} <strong>${op}</strong>`;
+          if (conflicts.length) conflicts.forEach(c=>html+=`<br>• Verplaats om ${c.time} naar ${c.suggest.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`);
+          else html += ' alle afspraken haalbaar';
+          html += '</li>';
+        }
+        html += '</ul>';
+        adviceBox.innerHTML = html;
+      }
     });
   </script>
 </body>
