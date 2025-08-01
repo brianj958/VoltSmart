@@ -5,25 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Voltsmart Afsprakenkaart - Automatisch Advies</title>
   <style>
-    html, body { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; background: #0a1a2f; color: #fff; }
-    #sidebar { position: absolute; top: 0; left: 0; width: 360px; height: 100%; background: rgba(10,20,40,0.95); overflow-y: auto; padding: 20px; box-sizing: border-box; }
-    #map { position: absolute; top: 0; left: 360px; right: 0; bottom: 0; }
-    h2 { color: #ffd700; margin-top: 20px; font-size: 18px; text-transform: uppercase; letter-spacing: 1px; }
-    select, button { width: 100%; padding: 8px; margin-top: 10px; border: none; border-radius: 4px; font-size: 14px; }
-    select { background: #1b2e4a; color: #fff; }
-    button { background: #ffd700; color: #0a1a2f; font-weight: bold; transition: background 0.3s; }
-    button:hover { background: #e6c300; }
-    .legend-row, .duration-row, .appointment-item { display: flex; align-items: center; margin-top: 10px; }
-    .legend-row input { transform: scale(1.2); margin-right: 10px; }
-    .legend-row label, .duration-row label { flex: 1; font-size: 14px; }
-    .duration-row select { width: 70px; margin-left: 10px; }
-    #appointments-list { margin-top: 12px; max-height: 300px; overflow-y: auto; }
-    .appointment-item { background: rgba(255,255,255,0.05); border-radius: 4px; padding: 6px; margin-bottom: 6px; }
-    .appointment-item input { margin-right: 12px; transform: scale(1.1); }
-    .appointment-item label { font-size: 14px; }
-    #adviceBox { position: absolute; bottom: 20px; right: 20px; width: 360px; max-height: 40%; overflow-y: auto; background: rgba(0,0,0,0.85); padding: 20px; border-radius: 10px; font-size: 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+    html, body { margin:0; padding:0; height:100%; font-family:'Segoe UI',sans-serif; background:#0a1a2f; color:#fff; }
+    #sidebar { position:absolute; top:0; left:0; width:360px; height:100%; background:rgba(10,20,40,0.95); overflow-y:auto; padding:20px; box-sizing:border-box; }
+    #map { position:absolute; top:0; left:360px; right:0; bottom:0; }
+    h2 { color:#ffd700; margin-top:20px; font-size:18px; text-transform:uppercase; letter-spacing:1px; }
+    select, button { width:100%; padding:8px; margin-top:10px; border:none; border-radius:4px; font-size:14px; }
+    select { background:#1b2e4a; color:#fff; }
+    button { background:#ffd700; color:#0a1a2f; font-weight:bold; transition:background 0.3s; }
+    button:hover { background:#e6c300; }
+    .legend-row, .duration-row, .appointment-item { display:flex; align-items:center; margin-top:10px; }
+    .legend-row input, .appointment-item input { transform:scale(1.2); margin-right:10px; }
+    .legend-row label, .duration-row label, .appointment-item label { flex:1; font-size:14px; }
+    .duration-row select { width:70px; margin-left:10px; }
+    #appointments-list { margin-top:12px; max-height:300px; overflow-y:auto; }
+    #adviceBox { position:absolute; bottom:20px; right:20px; width:360px; max-height:40%; overflow-y:auto; background:rgba(0,0,0,0.85); padding:20px; border-radius:10px; font-size:14px; box-shadow:0 4px 16px rgba(0,0,0,0.3); }
+    ::-webkit-scrollbar { width:6px; }
+    ::-webkit-scrollbar-thumb { background:#555; border-radius:3px; }
   </style>
 </head>
 <body>
@@ -40,159 +37,187 @@
   </div>
   <div id="map"></div>
   <div id="adviceBox"><strong>Kies afspraken en klik 'Bereken Advies'.</strong></div>
+
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const getEl = id => document.getElementById(id);
-      const API_KEY = 'AIzaSyDTvDRPKBT7KDONeDgekEXlN1_CMZUtX4U';
-      const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv';
-      const EMOJI = { Roelof:'👨‍🌾', Jesse:'🚀', Chanice:'✨', Karlijn:'🌸', Keith:'🟡', Gio:'👑' };
-      const TEAMS = Object.keys(EMOJI);
-      const BUFFER = 15;
-      const DEFAULT_CENTER = { lat:52.1326, lng:5.2913 };
-      const ZOOM = 8;
+    const $ = id => document.getElementById(id);
 
-      let map, directionsService;
-      let appointments = [], markers = [], selected = [];
-      let availability = {}, durations = {}, dates = [];
+    // Configuratie
+    const API_KEY = 'AIzaSyDTvDRPKBT7KDONeDgekEXlN1_CMZUtX4U';
+    const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv';
+    const EMOJI = { Roelof:'👨‍🌾', Jesse:'🚀', Chanice:'✨', Karlijn:'🌸', Keith:'🟡', Gio:'👑' };
+    const HOME = {
+      Roelof: 'Hemelrijk 9, Puiflijk',
+      Chanice: 'Harddraverstraat 32A, 3033 XL Rotterdam',
+      Gio: 'Savelsbos 304, 2716 HR Zoetermeer',
+      Karlijn: 'Spitael 92, 9202 HG Drachten',
+      Jesse: 'Kalf 406, 1509 BE Zaandam'
+      // Let op: Keith heeft geen thuisadres ingesteld en wordt overgeslagen.
+    };
+    const BUFFER_MIN = 15;
+    const DEFAULT_CENTER = { lat:52.1326, lng:5.2913 };
+    const DEFAULT_ZOOM = 8;
 
-      // Load Google Maps
-      const gm = document.createElement('script');
-      gm.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=initMap`;
-      gm.async = true;
-      document.head.appendChild(gm);
+    let map, directionsService;
+    let appointments = [], markers = [], selected = [];
+    let availability = {}, durations = {}, dates = [];
 
-      window.initMap = () => {
-        map = new google.maps.Map(getEl('map'), { center: DEFAULT_CENTER, zoom: ZOOM });
-        directionsService = new google.maps.DirectionsService();
-        initUI();
-        loadAppointments();
-      };
+    // Laad Google Maps API
+    function loadMaps() {
+      return new Promise(resolve => {
+        window.initMap = resolve;
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=initMap`;
+        script.async = true;
+        document.head.appendChild(script);
+      });
+    }
 
-      function initUI() {
-        // Legend & durations
-        const legend = getEl('legend'), durDiv = getEl('durations');
-        legend.innerHTML = '';
-        durDiv.innerHTML = '';
-        TEAMS.forEach(team => {
-          availability[team] = true;
-          durations[team] = 60;
-          const row = document.createElement('div'); row.className = 'legend-row';
-          const chk = document.createElement('input'); chk.type = 'checkbox'; chk.checked = true;
-          chk.onchange = () => availability[team] = chk.checked;
-          const lbl = document.createElement('label'); lbl.textContent = `${EMOJI[team]} ${team}`;
-          row.append(chk, lbl);
-          legend.appendChild(row);
-          const drow = document.createElement('div'); drow.className = 'duration-row';
-          const dlbl = document.createElement('label'); dlbl.textContent = `${team} duur`;
-          const sel = document.createElement('select'); [60,90].forEach(m => sel.append(new Option(`${m}m`, m)));
-          sel.value = durations[team]; sel.onchange = () => durations[team] = +sel.value;
-          drow.append(dlbl, sel);
-          durDiv.appendChild(drow);
-        });
-        getEl('reset-btn')?.addEventListener('click', resetSelection);
-        getEl('advise-btn')?.addEventListener('click', calculateAdvice);
-        getEl('date-filter')?.addEventListener('change', e => renderAppointments(e.target.value));
-      }
+    // Initialiseer applicatie
+    async function init() {
+      await loadMaps();
+      map = new google.maps.Map($('map'), { center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM });
+      directionsService = new google.maps.DirectionsService();
+      setupUI();
+      await fetchAppointments();
+      if (dates.length) renderAppointments(dates[0]);
+    }
 
-      async function loadAppointments() {
-        const text = await fetch(SHEET_URL).then(r => r.text());
-        appointments = text.split('\n').slice(1).map((row,i) => {
-          const cols = row.split(',');
-          const [date, op, client,, , time,,, lat, lng] = cols;
-          const la = parseFloat(lat), ln = parseFloat(lng);
-          if (!date || !EMOJI[op] || isNaN(la) || isNaN(ln)) return null;
-          return { id: i, date, op, client, time, loc: { lat: la, lng: ln } };
-        }).filter(Boolean);
-        dates = [...new Set(appointments.map(a => a.date))].sort();
-        const df = getEl('date-filter');
-        df.innerHTML = '';
-        dates.forEach(d => df.append(new Option(d,d)));
-        renderAppointments(dates[0]);
-      }
+    // Zet UI-elementen en handlers op
+    function setupUI() {
+      const legendDiv = $('legend'), durationsDiv = $('durations');
+      legendDiv.innerHTML = '';
+      durationsDiv.innerHTML = '';
 
-      function renderAppointments(date) {
-        // Clear
-        markers.forEach(m => m.setMap(null));
-        markers = []; selected = [];
-        const list = getEl('appointments-list'); list.innerHTML = '';
-        // Filter by date
-        const todays = appointments.filter(a => a.date === date).sort((a,b) => a.time.localeCompare(b.time));
-        todays.forEach(app => {
-          const item = document.createElement('div'); item.className = 'appointment-item';
-          const cb = document.createElement('input'); cb.type='checkbox'; cb.onchange = () => toggleSelection(app.id);
-          const lbl = document.createElement('label'); lbl.textContent = `${app.time} ${EMOJI[app.op]} ${app.op} - ${app.client}`;
-          item.append(cb, lbl); list.appendChild(item);
-          const marker = new google.maps.Marker({ position: app.loc, map, label:{text:EMOJI[app.op],fontSize:'20px'} });
-          marker.app = app;
-          marker.addListener('click', () => toggleSelection(app.id));
-          markers.push(marker);
-        });
-        fitMap();
-        getEl('adviceBox').innerHTML = `<strong>Kies afspraken en klik 'Bereken Advies'.</strong>`;
-      }
+      Object.keys(EMOJI).forEach(team => {
+        availability[team] = true;
+        durations[team] = 60;
 
-      function toggleSelection(id) {
-        const marker = markers.find(m => m.app.id === id);
-        if (!marker) return;
-        const idx = selected.indexOf(marker);
-        if (idx > -1) {
-          marker.setIcon(null);
-          selected.splice(idx,1);
-        } else {
-          marker.setIcon('http://maps.google.com/mapfiles/ms/icons/green-dot.png');
-          selected.push(marker);
+        // Legend row
+        const row = document.createElement('div'); row.className = 'legend-row';
+        const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = true;
+        cb.onchange = () => availability[team] = cb.checked;
+        const lbl = document.createElement('label'); lbl.textContent = `${EMOJI[team]} ${team}`;
+        row.append(cb, lbl); legendDiv.appendChild(row);
+
+        // Duration row
+        const drow = document.createElement('div'); drow.className = 'duration-row';
+        const dlabel = document.createElement('label'); dlabel.textContent = `${team} duur`;
+        const sel = document.createElement('select'); [60,90].forEach(v => sel.add(new Option(`${v}m`, v)));
+        sel.value = '60'; sel.onchange = () => durations[team] = +sel.value;
+        drow.append(dlabel, sel); durationsDiv.appendChild(drow);
+      });
+
+      $('date-filter').onchange = e => renderAppointments(e.target.value);
+      $('reset-btn').onclick = resetSelection;
+      $('advise-btn').onclick = calculateAdvice;
+    }
+
+    // Haal afspraken op uit Google Sheets
+    async function fetchAppointments() {
+      const text = await fetch(SHEET_CSV_URL).then(r => r.text());
+      appointments = text.split('\n').slice(1).map((line, idx) => {
+        const cols = line.split(',');
+        const date = cols[0], op = cols[1], client = cols[2], time = cols[5];
+        const lat = parseFloat(cols[8]), lng = parseFloat(cols[9]);
+        if (!date || !EMOJI[op] || isNaN(lat) || isNaN(lng)) return null;
+        return { id: idx, date, op, client, time, loc: { lat, lng } };
+      }).filter(a => a);
+
+      dates = [...new Set(appointments.map(a => a.date))].sort();
+      const df = $('date-filter'); df.innerHTML = '';
+      dates.forEach(d => df.add(new Option(d, d)));
+    }
+
+    // Render de lijst en markers van afspraken voor een datum
+    function renderAppointments(date) {
+      markers.forEach(m => m.setMap(null)); markers = []; selected = [];
+      $('appointments-list').innerHTML = '';
+
+      const dayApps = appointments.filter(a => a.date === date).sort((a,b) => a.time.localeCompare(b.time));
+
+      dayApps.forEach(app => {
+        const item = document.createElement('div'); item.className = 'appointment-item';
+        const cb = document.createElement('input'); cb.type = 'checkbox'; cb.onchange = () => toggleSelection(app.id);
+        const lbl = document.createElement('label'); lbl.textContent = `${app.time} ${EMOJI[app.op]} ${app.op} - ${app.client}`;
+        item.append(cb, lbl); $('appointments-list').appendChild(item);
+
+        const marker = new google.maps.Marker({ position: app.loc, map, label:{ text:EMOJI[app.op], fontSize:'20px' } });
+        marker.app = app; marker.addListener('click', () => toggleSelection(app.id)); markers.push(marker);
+      });
+
+      fitMap();
+      $('adviceBox').innerHTML = `<strong>Kies afspraken en klik 'Bereken Advies'.</strong>`;
+    }
+
+    // Toggle selectie
+    function toggleSelection(id) {
+      const marker = markers.find(m => m.app.id === id); if (!marker) return;
+      const idx = selected.indexOf(marker);
+      if (idx > -1) { marker.setIcon(null); selected.splice(idx,1); }
+      else { marker.setIcon('https://maps.google.com/mapfiles/ms/icons/green-dot.png'); selected.push(marker); }
+    }
+
+    // Fit map
+    function fitMap() {
+      if (!markers.length) { map.setCenter(DEFAULT_CENTER); map.setZoom(DEFAULT_ZOOM); return; }
+      const bounds = new google.maps.LatLngBounds(); markers.forEach(m => bounds.extend(m.getPosition())); map.fitBounds(bounds);
+    }
+
+    // Reset
+    function resetSelection() {
+      selected.forEach(m => m.setIcon(null)); selected = [];
+      document.querySelectorAll('#appointments-list input[type="checkbox"]').forEach(cb => cb.checked = false);
+      fitMap(); $('adviceBox').innerHTML = `<strong>Kies afspraken en klik 'Bereken Advies'.</strong>`;
+    }
+
+    // Bereken advies
+    async function calculateAdvice() {
+      const box = $('adviceBox');
+      if (!selected.length) { box.innerHTML = `<strong>Geen afspraak geselecteerd.</strong>`; return; }
+
+      const apps = selected.map(m => m.app).sort((a,b) => a.time.localeCompare(b.time));
+      let best = { op:null, time:Infinity };
+
+      for (const op of Object.keys(EMOJI)) {
+        if (!availability[op] || !HOME[op]) continue;  // Skip operators zonder adres
+        let totalMs = 0;
+        let cursor = new Date(`${apps[0].date}T${apps[0].time}:00`);
+
+        // Huis naar eerste afspraak
+        const homeMs = await new Promise(r => directionsService.route({
+          origin: HOME[op], destination: apps[0].loc, travelMode:'DRIVING', drivingOptions:{ departureTime:cursor, trafficModel:'bestguess' }
+        }, resp => {
+          const leg = resp.routes[0].legs[0];
+          const secs = leg.duration_in_traffic?.value || leg.duration.value;
+          r(secs*1000);
+        }));
+        totalMs += homeMs;
+        cursor = new Date(cursor.getTime() + homeMs + BUFFER_MIN*60000);
+
+        // Tussen afspraken
+        for (let i=1;i<apps.length;i++){
+          const prev=apps[i-1], curr=apps[i];
+          const segMs = await new Promise(r => directionsService.route({
+            origin: prev.loc, destination: curr.loc, travelMode:'DRIVING', drivingOptions:{ departureTime:cursor, trafficModel:'bestguess' }
+          }, resp => {
+            const leg = resp.routes[0].legs[0];
+            const secs = leg.duration_in_traffic?.value || leg.duration.value;
+            r(secs*1000);
+          }));
+          totalMs += segMs + BUFFER_MIN*60000;
+          cursor = new Date(cursor.getTime() + segMs + BUFFER_MIN*60000);
         }
+
+        if (totalMs < best.time) best = { op, time: totalMs };
       }
 
-      function fitMap() {
-        if (!markers.length) {
-          map.setCenter(DEFAULT_CENTER);
-          map.setZoom(ZOOM);
-          return;
-        }
-        const bounds = new google.maps.LatLngBounds();
-        markers.forEach(m=>bounds.extend(m.getPosition()));
-        map.fitBounds(bounds);
-      }
+      const hrs = Math.floor(best.time/3600000);
+      const mins = Math.round((best.time%3600000)/60000);
+      box.innerHTML = `<strong>Beste operator: ${EMOJI[best.op]} ${best.op}</strong><br>` +
+                      `Geschatte reistijd: ${hrs}u ${mins}m`;
+    }
 
-      function resetSelection() {
-        selected.forEach(m=>m.setIcon(null));
-        document.querySelectorAll('#appointments-list input[type=checkbox]').forEach(cb=>cb.checked=false);
-        selected = [];
-        fitMap();
-        getEl('adviceBox').innerHTML = `<strong>Kies afspraken en klik 'Bereken Advies'.</strong>`;
-      }
-
-      async function calculateAdvice() {
-        const adviceBox = getEl('adviceBox');
-        if (!selected.length) {
-          adviceBox.innerHTML = `<strong>Geen afspraak geselecteerd. Selecteer er minstens één om advies te krijgen.</strong>`;
-          return;
-        }
-        const groups = {};
-        selected.map(m=>m.app).sort((a,b)=>a.time.localeCompare(b.time)).forEach(app=>{groups[app.op]=groups[app.op]||[];groups[app.op].push(app);});
-        let html = '<b>Advies per operator:</b><ul>';
-        for (const op in groups) {
-          const listApps = groups[op];
-          let cursor = new Date(`${listApps[0].date}T${listApps[0].time}:00`);
-          cursor.setMinutes(cursor.getMinutes() + durations[op] || 60);
-          const conflicts = [];
-          for (let i=1; i<listApps.length; i++) {
-            const prev=listApps[i-1], curr=listApps[i];
-            const travelEnd = await new Promise(r => directionsService.route({ origin:prev.loc, destination:curr.loc, travelMode:'DRIVING', drivingOptions:{departureTime:cursor,trafficModel:'bestguess'} }, res=>{ const ms=res.routes[0].legs[0].duration_in_traffic.value*1000; r(new Date(cursor.getTime()+ms+BUFFER*60000)); }));
-            const nextStart = new Date(`${curr.date}T${curr.time}:00`);
-            if (travelEnd > nextStart) conflicts.push({time:curr.time,suggest:travelEnd});
-            cursor = new Date(nextStart); cursor.setMinutes(cursor.getMinutes()+durations[op]||60);
-          }
-          html += `<li>${EMOJI[op]} <strong>${op}</strong>`;
-          if (conflicts.length) conflicts.forEach(c=>html+=`<br>• Verplaats om ${c.time} naar ${c.suggest.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`);
-          else html += ' alle afspraken haalbaar';
-          html += '</li>';
-        }
-        html += '</ul>';
-        adviceBox.innerHTML = html;
-      }
-    });
+    init();
   </script>
 </body>
 </html>
